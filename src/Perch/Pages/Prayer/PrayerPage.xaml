@@ -1,0 +1,156 @@
+<core:IslandPage x:Class="Perch.Pages.Prayer.PrayerPage"
+                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                 xmlns:core="clr-namespace:Perch.Core">
+    <Grid>
+        <!-- Day view: the next prayer, the six times and the qibla -->
+        <Grid x:Name="DayView">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <DockPanel>
+                <Button x:Name="SettingsButton" DockPanel.Dock="Right" VerticalAlignment="Top"
+                        Style="{StaticResource PerchIconButton}" Content="&#xE713;" ToolTip="Prayer settings" />
+                <StackPanel>
+                    <TextBlock x:Name="PlaceText" Style="{StaticResource PerchTitle}" FontSize="18" />
+                    <TextBlock x:Name="DateText" Style="{StaticResource PerchCaption}" Margin="0,1,0,0" />
+                </StackPanel>
+            </DockPanel>
+
+            <Grid Grid.Row="1" Margin="0,10,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="196" />
+                    <ColumnDefinition Width="14" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Next prayer -->
+                <Border Style="{StaticResource PerchCard}" Padding="16,14">
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="NEXT PRAYER" Style="{StaticResource PerchCaption}" FontSize="11"
+                                   FontWeight="SemiBold" Foreground="{DynamicResource IslandAccent}" />
+                        <TextBlock x:Name="NextNameText" Style="{StaticResource PerchTitle}" FontSize="26" Margin="0,4,0,0" />
+                        <TextBlock x:Name="NextTimeText" Style="{StaticResource PerchTitle}" FontSize="40"
+                                   FontWeight="Bold" Margin="0,-6,0,0" />
+                        <TextBlock x:Name="NextCountdownText" Style="{StaticResource PerchBody}" FontSize="13"
+                                   Margin="0,6,0,0" Foreground="{DynamicResource IslandAccent}" />
+                    </StackPanel>
+                </Border>
+
+                <Grid Grid.Column="2">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <UniformGrid x:Name="TilesGrid" Columns="3" Rows="2" />
+
+                    <StackPanel x:Name="QiblaPanel" Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
+                        <TextBlock x:Name="QiblaText" Style="{StaticResource PerchCaption}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                        <Grid Width="56" Height="56" ToolTip="Direction of the Kaaba from here">
+                            <Ellipse Fill="{DynamicResource IslandCard}" Stroke="{DynamicResource IslandStroke}" StrokeThickness="1" />
+                            <Grid x:Name="QiblaNeedle" RenderTransformOrigin="0.5,0.5">
+                                <Grid.RenderTransform>
+                                    <RotateTransform x:Name="QiblaRotate" Angle="0" />
+                                </Grid.RenderTransform>
+                                <Polygon Points="28,5 33,28 28,31 23,28" Fill="{DynamicResource IslandAccent}" />
+                            </Grid>
+                            <Ellipse Width="5" Height="5" Fill="{DynamicResource IslandForeground}" />
+                        </Grid>
+                    </StackPanel>
+                </Grid>
+            </Grid>
+        </Grid>
+
+        <!-- Settings view: city, method, reminders -->
+        <Grid x:Name="SettingsView" Visibility="Collapsed">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="250" />
+                <ColumnDefinition Width="18" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- City picker -->
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <TextBlock x:Name="CityHeading" Style="{StaticResource PerchTitle}" FontSize="14" Margin="0,0,0,6" />
+                <TextBox x:Name="SearchBox" Style="{StaticResource PerchTextBox}" Margin="0,0,0,6"
+                         ToolTip="Search a city or country" />
+
+                <StackPanel Grid.Row="2" Margin="0,0,0,6">
+                    <Button x:Name="LocateButton" Style="{StaticResource PerchGhostButton}" Height="30"
+                            Content="Use my location" HorizontalAlignment="Stretch" />
+                    <TextBlock x:Name="LocationText" Style="{StaticResource PerchCaption}" Margin="2,4,0,0" />
+                </StackPanel>
+
+                <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel x:Name="PlacesPanel" Margin="0,0,8,0" />
+                </ScrollViewer>
+            </Grid>
+
+            <!-- Settings -->
+            <Grid Grid.Column="2">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <DockPanel Margin="0,0,0,8">
+                    <Button x:Name="DoneButton" DockPanel.Dock="Right" Style="{StaticResource PerchButton}"
+                            Content="Done" Padding="16,5" Margin="8,0,0,0" />
+                    <TextBlock x:Name="SettingsHeading" Style="{StaticResource PerchTitle}" FontSize="14"
+                               VerticalAlignment="Center" />
+                </DockPanel>
+
+                <StackPanel Grid.Row="1">
+                    <DockPanel Height="28" Margin="0,0,0,4">
+                        <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
+                            <Button x:Name="MethodPrev" Style="{StaticResource PerchIconButton}" Width="26" Height="26" FontSize="10" Content="&#xE76B;" />
+                            <TextBlock x:Name="MethodValue" Width="168" TextAlignment="Center" VerticalAlignment="Center" Style="{StaticResource PerchBody}" />
+                            <Button x:Name="MethodNext" Style="{StaticResource PerchIconButton}" Width="26" Height="26" FontSize="10" Content="&#xE76C;" />
+                        </StackPanel>
+                        <TextBlock Text="Calculation" Style="{StaticResource PerchBody}" VerticalAlignment="Center" />
+                    </DockPanel>
+
+                    <DockPanel Height="28" Margin="0,0,0,4">
+                        <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
+                            <Button x:Name="AsrPrev" Style="{StaticResource PerchIconButton}" Width="26" Height="26" FontSize="10" Content="&#xE76B;" />
+                            <TextBlock x:Name="AsrValue" Width="168" TextAlignment="Center" VerticalAlignment="Center" Style="{StaticResource PerchBody}" />
+                            <Button x:Name="AsrNext" Style="{StaticResource PerchIconButton}" Width="26" Height="26" FontSize="10" Content="&#xE76C;" />
+                        </StackPanel>
+                        <TextBlock Text="Asr" Style="{StaticResource PerchBody}" VerticalAlignment="Center" />
+                    </DockPanel>
+
+                    <DockPanel Height="28" Margin="0,0,0,4">
+                        <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
+                            <Button x:Name="RemindPrev" Style="{StaticResource PerchIconButton}" Width="26" Height="26" FontSize="10" Content="&#xE76B;" />
+                            <TextBlock x:Name="RemindValue" Width="168" TextAlignment="Center" VerticalAlignment="Center" Style="{StaticResource PerchBody}" />
+                            <Button x:Name="RemindNext" Style="{StaticResource PerchIconButton}" Width="26" Height="26" FontSize="10" Content="&#xE76C;" />
+                        </StackPanel>
+                        <TextBlock Text="Remind me before" Style="{StaticResource PerchBody}" VerticalAlignment="Center" />
+                    </DockPanel>
+
+                    <DockPanel Height="28" Margin="0,0,0,4">
+                        <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
+                            <Button x:Name="SoundPrev" Style="{StaticResource PerchIconButton}" Width="26" Height="26" FontSize="10" Content="&#xE76B;" />
+                            <TextBlock x:Name="SoundValue" Width="168" TextAlignment="Center" VerticalAlignment="Center" Style="{StaticResource PerchBody}" />
+                            <Button x:Name="SoundNext" Style="{StaticResource PerchIconButton}" Width="26" Height="26" FontSize="10" Content="&#xE76C;" />
+                        </StackPanel>
+                        <TextBlock Text="Sound" Style="{StaticResource PerchBody}" VerticalAlignment="Center" />
+                    </DockPanel>
+
+                    <CheckBox x:Name="PauseToggle" Style="{StaticResource PerchToggle}" Content="Pause music at prayer time" Height="28" Margin="0,0,0,4" />
+                    <CheckBox x:Name="NotifyToggle" Style="{StaticResource PerchToggle}" Content="Notify me when it is time" Height="28" />
+                </StackPanel>
+            </Grid>
+        </Grid>
+    </Grid>
+</core:IslandPage>
