@@ -1,0 +1,57 @@
+<core:IslandPage x:Class="Perch.Pages.Focus.FocusPage"
+                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                 xmlns:core="clr-namespace:Perch.Core">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="182" />
+            <ColumnDefinition Width="16" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- Left: the ring. Track and arc are both 140 wide, centred in a 150 box; the stroke is 10. -->
+        <Border Style="{StaticResource PerchCard}" Padding="16">
+            <Grid Width="150" Height="150" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <Ellipse Width="140" Height="140" HorizontalAlignment="Center" VerticalAlignment="Center"
+                         StrokeThickness="10" Stroke="{DynamicResource IslandCardHover}" />
+                <Path x:Name="RingArc" Width="140" Height="140" HorizontalAlignment="Center" VerticalAlignment="Center"
+                      StrokeThickness="10" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                      Stroke="{DynamicResource IslandAccent}" />
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <TextBlock x:Name="ClockText" Style="{StaticResource PerchTitle}" FontSize="34" FontWeight="SemiBold"
+                               HorizontalAlignment="Center" Typography.NumeralAlignment="Tabular" />
+                    <TextBlock x:Name="PhaseText" Style="{StaticResource PerchCaption}" FontSize="12"
+                               HorizontalAlignment="Center" Margin="0,-2,0,0" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Right: what is happening, the controls, progress to the long break, today -->
+        <Grid Grid.Column="2">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <StackPanel VerticalAlignment="Center">
+                <TextBlock x:Name="HeadlineText" Style="{StaticResource PerchTitle}" FontSize="22" Margin="2,0,0,0" />
+                <TextBlock x:Name="NextText" Style="{StaticResource PerchCaption}" FontSize="12.5" Margin="2,3,0,0" />
+
+                <StackPanel Orientation="Horizontal" Margin="0,18,0,0">
+                    <Button x:Name="PrimaryButton" Style="{StaticResource PerchButton}" Width="128" Height="40" FontSize="14" />
+                    <Button x:Name="ResetButton" Style="{StaticResource PerchGhostButton}" Content="Reset" Width="84" Height="40" Margin="8,0,0,0" ToolTip="Stop and start the cycle over" />
+                    <Button x:Name="SkipButton" Style="{StaticResource PerchGhostButton}" Content="Skip" Width="84" Height="40" Margin="8,0,0,0" ToolTip="Move on to the next phase" />
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" Margin="2,22,0,0">
+                    <StackPanel x:Name="DotsPanel" Orientation="Horizontal" VerticalAlignment="Center" />
+                    <TextBlock x:Name="DotsText" Style="{StaticResource PerchCaption}" FontSize="12" VerticalAlignment="Center" Margin="12,0,0,0" />
+                </StackPanel>
+            </StackPanel>
+
+            <Border Grid.Row="1" Style="{StaticResource PerchCard}" Padding="12,9" Margin="0,12,0,0">
+                <TextBlock x:Name="TodayText" Style="{StaticResource PerchBody}" FontSize="12.5" />
+            </Border>
+        </Grid>
+    </Grid>
+</core:IslandPage>
