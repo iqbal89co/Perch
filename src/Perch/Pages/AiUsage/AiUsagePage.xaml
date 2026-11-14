@@ -43,7 +43,9 @@
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <TextBox x:Name="BudgetBox" Style="{StaticResource PerchTextBox}" Height="30" VerticalContentAlignment="Center"
+                        <!-- Zero vertical padding: the shared PerchTextBox padding (10,7) leaves too little room in a 34 px box. -->
+                        <TextBox x:Name="BudgetBox" Style="{StaticResource PerchTextBox}" Height="34" Padding="10,0"
+                                 Background="{DynamicResource IslandCardHover}"
                                  ToolTip="Tokens per 5-hour window" />
                         <TextBlock x:Name="BudgetHint" Grid.Column="1" Style="{StaticResource PerchCaption}"
                                    Foreground="{DynamicResource IslandDanger}" VerticalAlignment="Center" Margin="10,0,8,0"

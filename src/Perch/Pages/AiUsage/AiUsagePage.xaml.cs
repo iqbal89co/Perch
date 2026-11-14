@@ -21,7 +21,7 @@ public partial class AiUsagePage : IslandPage
     private const string TabGlyph = "";
     private const string GearGlyph = "";
     private const string BackGlyph = "";
-    private const double BarHeight = 30;
+    private const double BarHeight = 26;
 
     private static readonly TimeSpan ShownRefreshEvery = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan HiddenRefreshEvery = TimeSpan.FromMinutes(5);
@@ -146,8 +146,9 @@ public partial class AiUsagePage : IslandPage
             _settings.Notified = result.State;
             Save();
         }
-        foreach (var message in result.Messages)
-            Ctx.Notify(TabGlyph, message, TimeSpan.FromSeconds(6), key: "ai");
+        // One notice per refresh: a second Notify with the same key would replace the first.
+        if (result.Messages.Count > 0)
+            Ctx.Notify(TabGlyph, string.Join("  ·  ", result.Messages), TimeSpan.FromSeconds(6), key: "ai");
     }
 
     private void ToggleSettings()
@@ -243,6 +244,7 @@ public partial class AiUsagePage : IslandPage
         var big = new TextBlock { Style = (Style)FindResource("PerchBody"), Margin = new Thickness(0, 6, 0, 0) };
         big.Inlines.Add(new Run(AiFormat.Tokens(block?.ActiveTokens ?? 0)) { FontSize = 26, FontWeight = FontWeights.Bold });
         big.Inlines.Add(RunWithResource(" tokens", 12, "IslandSubtle"));
+        if (block != null) big.ToolTip = BlockDetails(block);
         stack.Children.Add(big);
 
         stack.Children.Add(Caption(block != null
@@ -259,10 +261,23 @@ public partial class AiUsagePage : IslandPage
         if (block?.TopModel is { } model)
             stack.Children.Add(Caption($"Mostly {model}", margin: new Thickness(0, 4, 0, 0)));
 
-        stack.Children.Add(Caption("LAST 7 DAYS", size: 10, semibold: true, margin: new Thickness(0, 8, 0, 2)));
+        stack.Children.Add(Caption($"LAST 7 DAYS · {AiFormat.Tokens(summary.Week.Sum())} TOTAL", size: 10, semibold: true,
+            margin: new Thickness(0, 6, 0, 0)));
         stack.Children.Add(WeekChart(summary.Week));
 
         return Card(stack);
+    }
+
+    /// <summary>Tooltip on the window total: when it started and the split by model.</summary>
+    private string BlockDetails(ClaudeBlock block)
+    {
+        var zone = TimeZoneInfo.Local;
+        var start = TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(block.StartUtc, DateTimeKind.Utc), zone);
+        var lines = new List<string> { $"Window started {start:HH:mm}, cache {AiFormat.Tokens(block.CacheTokens)} tokens" };
+        lines.AddRange(block.ModelTokens
+            .OrderByDescending(kv => kv.Value)
+            .Select(kv => $"{kv.Key}: {AiFormat.Tokens(kv.Value)}"));
+        return string.Join(Environment.NewLine, lines);
     }
 
     private Border BuildCodexCard(CodexSummary summary, DateTime nowUtc)
@@ -321,6 +336,18 @@ public partial class AiUsagePage : IslandPage
             var column = new Grid();
             column.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
             column.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+            // A faint full-height track, so a quiet day still reads as a slot rather than a stray dash.
+            var track = new Border
+            {
+                Width = 12,
+                Height = BarHeight,
+                CornerRadius = new CornerRadius(3),
+                VerticalAlignment = VerticalAlignment.Bottom,
+                HorizontalAlignment = HorizontalAlignment.Center,
+            };
+            track.SetResourceReference(Border.BackgroundProperty, "IslandCardHover");
+            column.Children.Add(track);
 
             var bar = new Border
             {
