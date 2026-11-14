@@ -92,6 +92,9 @@ function IslandHeightPx {
 }
 
 $liveData = NewData
+# Keep the resting island to the plain clock so its geometry is predictable even if music is playing.
+New-Item -ItemType Directory -Force (Join-Path $liveData "data") | Out-Null
+'{ "show_media_in_pill": false, "theme": "midnight" }' | Set-Content (Join-Path $liveData "data\settings.json") -Encoding utf8
 $p = Start-Process -FilePath $Exe -ArgumentList @("--data-dir", $liveData, "--theme", "Midnight") -PassThru
 Start-Sleep -Milliseconds 2500
 $orig = New-Object E2E.Win+POINT; [void][E2E.Win]::GetCursorPos([ref]$orig)
@@ -130,6 +133,18 @@ try {
     [void][E2E.Win]::SetCursorPos($orig.X, $orig.Y)
     if (-not $p.HasExited) { $p.Kill() }
 }
+
+# ---------------------------------------------------------------- 3b. cost while the music pill animates
+$musicData = NewData
+$m = Start-Process -FilePath $Exe -ArgumentList @("--data-dir", $musicData, "--demo-media") -PassThru
+try {
+    Start-Sleep -Seconds 3
+    $m.Refresh(); $c0 = $m.TotalProcessorTime.TotalMilliseconds
+    Start-Sleep -Seconds 5
+    $m.Refresh(); $c1 = $m.TotalProcessorTime.TotalMilliseconds
+    $mpct = ($c1 - $c0) / 5000 / [Environment]::ProcessorCount * 100
+    Check "CPU with the music pill animating below 1.5%" ($mpct -lt 1.5) ("{0:N2} %" -f $mpct)
+} finally { if (-not $m.HasExited) { $m.Kill() } }
 
 # ---------------------------------------------------------------- 4. single instance (real mutex, private data via env)
 $env:PERCH_DATA_DIR = NewData

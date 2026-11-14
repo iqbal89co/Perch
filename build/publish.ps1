@@ -30,7 +30,7 @@ Write-Host "== publish" -ForegroundColor Cyan
 $out = Join-Path $root "dist\app"
 if (Test-Path $out) { Remove-Item -Recurse -Force $out }
 & $dotnet publish (Join-Path $root "src\Perch\Perch.csproj") -c Release -r win-x64 --self-contained true `
-    -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true `
+    -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=false `
     -p:DebugType=none -p:DebugSymbols=false -o $out --nologo
 if ($LASTEXITCODE -ne 0) { throw "publish failed" }
 Get-ChildItem $out | Format-Table Name, @{ n = "MB"; e = { [math]::Round($_.Length / 1MB, 1) } } | Out-String | Write-Host

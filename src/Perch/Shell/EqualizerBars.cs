@@ -13,6 +13,10 @@ public sealed class EqualizerBars : StackPanel
     private readonly double[] _phase = { 0.0, 1.7, 3.1, 4.6 };
     private bool _playing;
     private bool _hooked;
+    // ~30 fps is plenty for a 16 px equaliser; a timer (unlike CompositionTarget.Rendering) lets WPF
+    // skip frames entirely between updates, which keeps CPU low on 144-240 Hz displays.
+    private readonly System.Windows.Threading.DispatcherTimer _timer =
+        new(System.Windows.Threading.DispatcherPriority.Render) { Interval = TimeSpan.FromMilliseconds(33) };
 
     public EqualizerBars()
     {
@@ -34,6 +38,7 @@ public sealed class EqualizerBars : StackPanel
             _bars[i] = bar;
             Children.Add(bar);
         }
+        _timer.Tick += OnFrame;
         Loaded += (_, _) => Sync();
         Unloaded += (_, _) => Unhook();
     }
@@ -62,14 +67,14 @@ public sealed class EqualizerBars : StackPanel
     {
         if (_hooked) return;
         _hooked = true;
-        CompositionTarget.Rendering += OnFrame;
+        _timer.Start();
     }
 
     private void Unhook()
     {
         if (!_hooked) return;
         _hooked = false;
-        CompositionTarget.Rendering -= OnFrame;
+        _timer.Stop();
     }
 
     private void OnFrame(object? sender, EventArgs e)
