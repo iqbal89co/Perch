@@ -17,7 +17,7 @@ namespace Perch.Pages.Prayer;
 public partial class PrayerPage : IslandPage
 {
     private const string PillKey = "prayer";
-    private const string PrayerGlyph = "";
+    private const string PrayerGlyph = ""; // clock
     private const string LocationOff = "Location is off — pick your city instead";
 
     private static readonly PrayerKind[] Shown =
@@ -221,28 +221,31 @@ public partial class PrayerPage : IslandPage
             NextCountdownText.Text = string.Empty;
         }
 
-        RenderTiles(now, next?.Name, use24h);
+        // After Isha the tiles move on to tomorrow, so they always match the card above them.
+        var last = _today.Isha ?? _today.Maghrib;
+        var tilesDay = last is { } lastTime && now >= lastTime && _tomorrow is not null ? _tomorrow : _today;
+        RenderTiles(tilesDay, now, next?.Time, use24h);
         PostPill(next, now);
     }
 
     /// <summary>Six tiles: the next prayer highlighted, passed times in the subtle colour. Rebuilt only when that changes.</summary>
-    private void RenderTiles(DateTimeOffset now, string? nextName, bool use24h)
+    private void RenderTiles(PrayerDay day, DateTimeOffset now, DateTimeOffset? nextTime, bool use24h)
     {
         var states = Shown.Select(kind =>
         {
-            var time = _today!.At(kind);
-            var state = time is null ? "none" : time < now ? "past" : kind.ToString() == nextName ? "next" : "future";
+            var time = day.At(kind);
+            var state = time is null ? "none" : time == nextTime ? "next" : time < now ? "past" : "future";
             return $"{kind}:{state}";
         });
-        var key = $"{_day:yyyy-MM-dd}|" + string.Join(",", states);
+        var key = $"{day.Date:yyyy-MM-dd}|" + string.Join(",", states);
         if (key == _tilesKey) return;
         _tilesKey = key;
 
         TilesGrid.Children.Clear();
         foreach (var kind in Shown)
         {
-            var time = _today!.At(kind);
-            var isNext = kind.ToString() == nextName;
+            var time = day.At(kind);
+            var isNext = time is not null && time == nextTime;
             var isPast = time is { } t && t < now;
 
             var name = new TextBlock { Text = kind.ToString(), FontSize = 11.5, Style = (Style)FindResource("PerchCaption") };
@@ -375,9 +378,8 @@ public partial class PrayerPage : IslandPage
             var chosen = _settings.PlaceName == place.Name && _settings.TimeZoneId == place.TimeZoneId;
             var button = new Button
             {
-                Style = (Style)FindResource("PerchGhostButton"),
+                Style = (Style)FindResource("PlaceButton"),
                 Content = $"{place.Name}  ·  {place.Country}",
-                HorizontalContentAlignment = HorizontalAlignment.Left,
                 Height = 28,
                 Padding = new Thickness(10, 4, 10, 4),
                 Margin = new Thickness(0, 0, 0, 2),
