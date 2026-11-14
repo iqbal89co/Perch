@@ -87,7 +87,13 @@ public partial class IslandWindow : Window
         Island.DragOver += (_, _) => _collapseTimer.Stop();
         Island.DragLeave += (_, _) => OnPointerLeave();
         TabStrip.MouseWheel += OnTabWheel;
-        SettingsButton.Click += (_, _) => SettingsUi.SettingsWindow.ShowSingle();
+        SettingsButton.Click += (_, _) =>
+        {
+            // Fold away first so the open island doesn't sit on top of the Settings window.
+            _pinned = false;
+            Collapse();
+            SettingsUi.SettingsWindow.ShowSingle();
+        };
         PreviewKeyDown += (_, e) =>
         {
             if (e.Key == Key.Escape && _expanded) { _pinned = false; Collapse(); e.Handled = true; }
