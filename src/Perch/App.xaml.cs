@@ -56,7 +56,14 @@ public partial class App : Application
         };
 
         Log.Info($"Perch {typeof(App).Assembly.GetName().Version} starting");
+        var firstRun = !File.Exists(JsonStore.PathFor("settings"));
         _ctx = IslandContext.Initialize(Dispatcher);
+        if (firstRun && !isTestRun)
+        {
+            // The installer's "Start when I sign in" choice wins on the very first run.
+            _ctx.Settings.StartWithWindows = Autostart.IsEnabled();
+            _ctx.SaveSettings();
+        }
         if (args.Get("--theme") is { } theme && Enum.TryParse<IslandTheme>(theme, true, out var t)) _ctx.Settings.Theme = t;
         if (args.Get("--shape") is { } shape && Enum.TryParse<IslandShape>(shape, true, out var sh)) _ctx.Settings.Shape = sh;
         ThemeManager.Apply(_ctx.Settings);
