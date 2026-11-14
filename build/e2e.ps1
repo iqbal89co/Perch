@@ -77,15 +77,18 @@ function IslandHeightPx {
     $h = 520
     $bmp = New-Object System.Drawing.Bitmap 1, $h
     $g = [System.Drawing.Graphics]::FromImage($bmp)
-    $g.CopyFromScreen($cx, $screen.Y, 0, 0, (New-Object System.Drawing.Size 1, $h))
+    # 40 px left of centre: inside the resting island but beside the clock digits.
+    $g.CopyFromScreen($cx - 40, $screen.Y, 0, 0, (New-Object System.Drawing.Size 1, $h))
     $g.Dispose()
-    $dark = 0
+    # Height = last dark row before a long run of non-dark rows (text and icons inside the island are short gaps).
+    $last = -1; $gap = 0
     for ($y = 0; $y -lt $h; $y++) {
         $c = $bmp.GetPixel(0, $y)
-        if (($c.R + $c.G + $c.B) / 3 -lt 30) { $dark++ } else { if ($y -gt 10 -and $dark -gt 0) { break } }
+        if (($c.R + $c.G + $c.B) / 3 -lt 30) { $last = $y; $gap = 0 }
+        elseif ($last -ge 0) { $gap++; if ($gap -gt 6) { break } }
     }
     $bmp.Dispose()
-    return $dark
+    return $last + 1
 }
 
 $liveData = NewData
