@@ -17,6 +17,8 @@ going in. Point at it and it springs open into a panel with tabs.
 | **Shelf** | Drag files onto the island to keep them here; drag them out again into any app. Text drops become notes. |
 | **Tasks** | A small to-do list. Enter to add, click to tick, double-click to edit. |
 | **Focus** | A Pomodoro timer with short and long breaks. It keeps counting on the resting island. |
+| **AI** | How much of your current 5-hour window and week you've used in Claude Code and Codex CLI, read from their own logs on this PC. Optional budget and "tell me before I run out" notices. |
+| **Prayer** | Today's prayer times for your city, computed on your PC (Kemenag, MWL, ISNA, Umm al-Qura and more), the Hijri date, a countdown on the island before each prayer, a gentle chime and the qibla. |
 | **System** | CPU, memory, network, disks, battery and the busiest apps, live while the tab is open. |
 
 **On the resting island:** the clock, now playing with a little equaliser, the focus countdown, a volume
@@ -42,7 +44,9 @@ your settings in `%APPDATA%\Perch` are kept for a reinstall (delete the folder t
 
 Tasks, the Shelf, focus history and settings are plain files in `%APPDATA%\Perch`. There are no accounts,
 ads or analytics. The only network request is the lyrics lookup to `lrclib.net` for the song that is
-playing; switch *Lyrics* off in Settings › Music to stop it.
+playing; switch *Lyrics* off in Settings › Music to stop it. Prayer times are calculated on your PC, and
+the AI tab reads only token counts and times from your AI tools' local logs: no sign-ins, no credentials,
+nothing sent anywhere.
 
 ## Build from source
 

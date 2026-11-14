@@ -51,7 +51,7 @@ $data = NewData
 $list = Join-Path $data "pages.txt"
 $ok = RunPerch @("--data-dir", $data, "--list-pages", $list)
 $pages = if (Test-Path $list) { Get-Content $list | ForEach-Object { ($_ -split "`t")[0] } } else { @() }
-$expected = "media", "today", "shelf", "tasks", "focus", "system"
+$expected = "media", "today", "shelf", "tasks", "focus", "ai", "prayer", "system"
 $missing = $expected | Where-Object { $pages -notcontains $_ }
 Check "all pages discovered" ($ok -and -not $missing) ("found: " + ($pages -join ", ") + $(if ($missing) { "; missing: " + ($missing -join ", ") } else { "" }))
 
@@ -173,7 +173,7 @@ if ($Installer) {
     Check "Start menu shortcut" (Test-Path $lnk) $lnk
     $d2 = NewData; $l2 = Join-Path $d2 "pages.txt"
     $run = Start-Process -FilePath $exe2 -ArgumentList @("--data-dir", $d2, "--list-pages", $l2) -PassThru
-    $ranOk = $run.WaitForExit(30000) -and (Test-Path $l2) -and ((Get-Content $l2).Count -ge 6)
+    $ranOk = $run.WaitForExit(30000) -and (Test-Path $l2) -and ((Get-Content $l2).Count -ge $expected.Count)
     Check "installed app starts (self-contained, no .NET needed)" $ranOk ""
     $noRun = $hadRun -or ($null -eq (Get-ItemProperty $runKey -Name Perch -ErrorAction SilentlyContinue))
     Check "autostart left off when unticked" $noRun ""
