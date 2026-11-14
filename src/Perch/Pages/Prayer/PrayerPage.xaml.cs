@@ -17,7 +17,7 @@ namespace Perch.Pages.Prayer;
 public partial class PrayerPage : IslandPage
 {
     private const string PillKey = "prayer";
-    private const string PrayerGlyph = ""; // clock
+    private const string PrayerGlyph = ""; // crescent moon
     private const string LocationOff = "Location is off — pick your city instead";
 
     private static readonly PrayerKind[] Shown =
