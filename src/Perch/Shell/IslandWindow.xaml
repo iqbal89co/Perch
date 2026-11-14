@@ -1,0 +1,76 @@
+<Window x:Class="Perch.Shell.IslandWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Perch"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        Topmost="True"
+        ShowInTaskbar="False"
+        ShowActivated="False"
+        ResizeMode="NoResize"
+        Width="760" Height="420"
+        FontFamily="{StaticResource UiFont}"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True"
+        TextOptions.TextFormattingMode="Display">
+
+    <!-- Root has no background: everything outside the island stays click-through. -->
+    <Grid x:Name="Root">
+        <Grid x:Name="Island" HorizontalAlignment="Center" VerticalAlignment="Top"
+              AllowDrop="True" Background="{x:Null}">
+
+            <Path x:Name="Shape" Fill="{DynamicResource IslandBackground}"
+                  Stroke="{DynamicResource IslandStroke}" StrokeThickness="1">
+                <Path.Effect>
+                    <DropShadowEffect BlurRadius="24" ShadowDepth="4" Direction="270" Opacity="0.38"
+                                      Color="#000000" RenderingBias="Performance" />
+                </Path.Effect>
+            </Path>
+
+            <Grid x:Name="ContentHost">
+
+                <!-- Resting content: leading | centre | trailing -->
+                <Grid x:Name="PillLayer" VerticalAlignment="Top" IsHitTestVisible="False">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <ContentControl x:Name="PillLeading" Grid.Column="0" VerticalAlignment="Center" Margin="0,0,8,0" />
+                    <ContentControl x:Name="PillCenter" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center" />
+                    <ContentControl x:Name="PillTrailing" Grid.Column="2" VerticalAlignment="Center" Margin="8,0,0,0" />
+                </Grid>
+
+                <!-- Opened content: tab strip and the selected page -->
+                <Grid x:Name="ExpandedLayer" VerticalAlignment="Top" HorizontalAlignment="Center"
+                      Opacity="0" IsHitTestVisible="False" Visibility="Hidden">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="46" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <Grid x:Name="TabStrip" Grid.Row="0" Margin="14,8,10,0" Background="Transparent">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel x:Name="Tabs" Orientation="Horizontal" VerticalAlignment="Center" />
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock x:Name="HeaderClock" Style="{StaticResource PerchCaption}" FontSize="12"
+                                       VerticalAlignment="Center" Margin="0,0,8,0" />
+                            <Button x:Name="SettingsButton" Style="{StaticResource PerchIconButton}" Content="&#xE713;"
+                                    ToolTip="Settings" Width="30" Height="30" FontSize="14" />
+                        </StackPanel>
+                    </Grid>
+
+                    <ContentControl x:Name="PageHost" Grid.Row="1" Margin="16,4,16,14" Focusable="False">
+                        <ContentControl.RenderTransform>
+                            <TranslateTransform x:Name="PageShift" />
+                        </ContentControl.RenderTransform>
+                    </ContentControl>
+                </Grid>
+            </Grid>
+        </Grid>
+    </Grid>
+</Window>
