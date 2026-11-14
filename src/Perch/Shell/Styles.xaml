@@ -192,7 +192,11 @@
         <Setter Property="CaretBrush" Value="{DynamicResource IslandAccent}" />
         <Setter Property="SelectionBrush" Value="{DynamicResource IslandAccent}" />
         <Setter Property="Background" Value="{DynamicResource IslandCard}" />
-        <Setter Property="Padding" Value="10,7" />
+        <!-- Horizontal padding only: callers often fix Height to 32-36 and the text is centred vertically.
+             Vertical padding in a fixed-height box squeezes the text host until nothing is painted. -->
+        <Setter Property="Padding" Value="10,0" />
+        <Setter Property="MinHeight" Value="32" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="TextBox">
