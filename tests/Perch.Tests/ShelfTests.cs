@@ -3,7 +3,6 @@ using System.Text;
 using Perch.Core;
 using Perch.Pages.Shelf;
 
-[assembly: Xunit.CollectionBehavior(DisableTestParallelization = true)]
 
 namespace Perch.Tests;
 
