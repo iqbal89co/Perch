@@ -27,6 +27,11 @@ internal static partial class Native
     public static bool IsCloaked(IntPtr hwnd) =>
         DwmGetWindowAttribute(hwnd, DWMWA_CLOAKED, out var cloaked, sizeof(int)) == 0 && cloaked != 0;
     public const int WS_EX_TOOLWINDOW = 0x00000080;
+    public const int WS_EX_TRANSPARENT = 0x00000020;
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool GetCursorPos(out POINT point);
     public const int WS_EX_APPWINDOW = 0x00040000;
     public const int WS_EX_NOACTIVATE = 0x08000000;
 

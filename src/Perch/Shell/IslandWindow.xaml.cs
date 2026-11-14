@@ -77,8 +77,9 @@ public partial class IslandWindow : Window
         CreatePages();
         BuildTabs();
 
-        Island.MouseEnter += (_, _) => OnPointerEnter();
-        Island.MouseLeave += (_, _) => OnPointerLeave();
+        // Pointer enter/leave comes from UpdateClickThrough's geometry test (the window is click-through
+        // while the pointer is off the shape, so WPF's own MouseEnter can't be relied on).
+        TrackContextMenus();
         Island.MouseLeftButtonUp += (_, e) =>
         {
             if (!_expanded) { Expand(); e.Handled = true; }
@@ -100,14 +101,14 @@ public partial class IslandWindow : Window
         };
         Deactivated += (_, _) =>
         {
-            if (_expanded && !Island.IsMouseOver && !_pinned) StartCollapseTimer();
+            if (_expanded && !_pointerOver && !_pinned) StartCollapseTimer();
         };
 
         _hoverTimer.Tick += (_, _) => { _hoverTimer.Stop(); Expand(); };
         _collapseTimer.Tick += (_, _) =>
         {
             _collapseTimer.Stop();
-            if (Island.IsMouseOver || _pinned || !CanCollapse()) return;
+            if (_pointerOver || _pinned || !CanCollapse()) return;
             Collapse();
         };
         _clockTimer.Tick += (_, _) => Tick();
@@ -300,9 +301,34 @@ public partial class IslandWindow : Window
 
     private bool CanCollapse()
     {
-        // Don't fold away while the user is typing into the island.
+        // Don't fold away while the user is typing into the island or using one of its context menus.
         if (IsActive && Keyboard.FocusedElement is TextBox tb && tb.IsDescendantOf(this)) return false;
+        if (_openMenus > 0) return false;
         return true;
+    }
+
+    private int _openMenus;
+
+    private static bool _menuHandlersRegistered;
+    private static IslandWindow? _menuOwner;
+
+    private void TrackContextMenus()
+    {
+        _menuOwner = this;
+        if (_menuHandlersRegistered) return;
+        _menuHandlersRegistered = true;
+        // Context menus live in their own popup windows, so listen at class level and keep only the
+        // menus whose target sits inside the island.
+        EventManager.RegisterClassHandler(typeof(ContextMenu), ContextMenu.OpenedEvent, new RoutedEventHandler((s, _) =>
+        {
+            if (_menuOwner is { } w && s is ContextMenu { PlacementTarget: Visual t } && t.IsDescendantOf(w)) w._openMenus++;
+        }));
+        EventManager.RegisterClassHandler(typeof(ContextMenu), ContextMenu.ClosedEvent, new RoutedEventHandler((s, _) =>
+        {
+            if (_menuOwner is not { } w || s is not ContextMenu { PlacementTarget: Visual t } || !t.IsDescendantOf(w)) return;
+            w._openMenus = Math.Max(0, w._openMenus - 1);
+            if (w._openMenus == 0 && w._expanded && !w._pointerOver && !w._pinned) w.StartCollapseTimer();
+        }));
     }
 
     private void OnPointerEnter()
@@ -453,6 +479,59 @@ public partial class IslandWindow : Window
         ex &= ~(long)Native.WS_EX_APPWINDOW;
         Native.SetWindowLongPtr(_hwnd, Native.GWL_EXSTYLE, new IntPtr(ex));
         PositionOnMonitor();
+        _hitTimer.Tick += (_, _) => UpdateClickThrough();
+        _hitTimer.Start();
+        UpdateClickThrough();
+    }
+
+    // ---------------------------------------------------------------- click-through outside the shape
+
+    private readonly DispatcherTimer _hitTimer = new(DispatcherPriority.Input) { Interval = TimeSpan.FromMilliseconds(250) };
+    private bool _clickThrough;
+    private bool _pointerOver;
+
+    /// <summary>
+    /// A layered window receives clicks on every pixel with any alpha, which includes the soft drop shadow.
+    /// While the pointer is not over the island's own shape, mark the whole window WS_EX_TRANSPARENT so
+    /// clicks fall through to whatever is underneath. Polls fast only while the pointer is near.
+    /// </summary>
+    private void UpdateClickThrough()
+    {
+        if (_hwnd == IntPtr.Zero) return;
+        try
+        {
+            Native.GetCursorPos(out var cursor);
+            Native.GetWindowRect(_hwnd, out var rect);
+            var near = cursor.X >= rect.Left - 40 && cursor.X <= rect.Right + 40 && cursor.Y >= rect.Top - 40 && cursor.Y <= rect.Bottom + 40;
+            _hitTimer.Interval = TimeSpan.FromMilliseconds(near ? 30 : 100);
+
+            var over = false;
+            if (near && IsVisible && Shape.Data is { } geometry && PresentationSource.FromVisual(Shape) != null)
+            {
+                var p = Shape.PointFromScreen(new Point(cursor.X, cursor.Y));
+                over = geometry.FillContains(p, 1.0, ToleranceType.Absolute);
+            }
+            SetClickThrough(!over);
+            if (over != _pointerOver)
+            {
+                _pointerOver = over;
+                if (over) OnPointerEnter();
+                else OnPointerLeave();
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Warn($"shell: hit test failed ({ex.Message})");
+        }
+    }
+
+    private void SetClickThrough(bool on)
+    {
+        if (on == _clickThrough) return;
+        _clickThrough = on;
+        var ex = (long)Native.GetWindowLongPtr(_hwnd, Native.GWL_EXSTYLE);
+        ex = on ? ex | Native.WS_EX_TRANSPARENT : ex & ~(long)Native.WS_EX_TRANSPARENT;
+        Native.SetWindowLongPtr(_hwnd, Native.GWL_EXSTYLE, new IntPtr(ex));
     }
 
     private WinForms.Screen TargetScreen()

@@ -72,45 +72,37 @@ foreach ($shape in "Docked", "Floating") {
 }
 
 # ---------------------------------------------------------------- 3. live: hover opens, leaving closes, click-through
-function IslandHeightPx {
-    # Rows at the island's centre column that differ from the pixel 300 px to the side (i.e. the island is there).
-    $h = 520
-    $bmp = New-Object System.Drawing.Bitmap 1, $h
-    $g = [System.Drawing.Graphics]::FromImage($bmp)
-    # 40 px left of centre: inside the resting island but beside the clock digits.
-    $g.CopyFromScreen($cx - 40, $screen.Y, 0, 0, (New-Object System.Drawing.Size 1, $h))
-    $g.Dispose()
-    # Height = last dark row before a long run of non-dark rows (text and icons inside the island are short gaps).
-    $last = -1; $gap = 0
-    for ($y = 0; $y -lt $h; $y++) {
-        $c = $bmp.GetPixel(0, $y)
-        if (($c.R + $c.G + $c.B) / 3 -lt 30) { $last = $y; $gap = 0 }
-        elseif ($last -ge 0) { $gap++; if ($gap -gt 6) { break } }
-    }
-    $bmp.Dispose()
-    return $last + 1
+function ClickTargetIsPerch([int]$X, [int]$Y, [int]$PerchPid, [int]$SettleMs = 150) {
+    # Move the pointer there, let Perch's hit-test poll react, then ask Windows which window a click would hit.
+    [void][E2E.Win]::SetCursorPos($X, $Y)
+    Start-Sleep -Milliseconds $SettleMs
+    $pt = New-Object E2E.Win+POINT; $pt.X = $X; $pt.Y = $Y
+    $root = [E2E.Win]::GetAncestor([E2E.Win]::WindowFromPoint($pt), 2)
+    $owner = [uint32]0; [void][E2E.Win]::GetWindowThreadProcessId($root, [ref]$owner)
+    return ($owner -eq $PerchPid)
 }
 
 $liveData = NewData
 # Keep the resting island to the plain clock so its geometry is predictable even if music is playing.
 New-Item -ItemType Directory -Force (Join-Path $liveData "data") | Out-Null
-'{ "show_media_in_pill": false, "theme": "midnight" }' | Set-Content (Join-Path $liveData "data\settings.json") -Encoding utf8
+'{ "show_media_in_pill": false, "theme": "midnight", "hover_delay_ms": 400 }' | Set-Content (Join-Path $liveData "data\settings.json") -Encoding utf8
 $p = Start-Process -FilePath $Exe -ArgumentList @("--data-dir", $liveData, "--theme", "Midnight") -PassThru
 Start-Sleep -Milliseconds 2500
 $orig = New-Object E2E.Win+POINT; [void][E2E.Win]::GetCursorPos([ref]$orig)
+$x = $cx - 40
 try {
-    [void][E2E.Win]::SetCursorPos($cx, $screen.Y + $screen.Height - 200)
-    Start-Sleep -Milliseconds 900
-    $rest = IslandHeightPx
-    [void][E2E.Win]::SetCursorPos($cx, $screen.Y + 8)
-    Start-Sleep -Milliseconds 1200
-    $open = IslandHeightPx
-    [void][E2E.Win]::SetCursorPos($cx, $screen.Y + $screen.Height - 200)
-    Start-Sleep -Milliseconds 1600
-    $closed = IslandHeightPx
-    Check "resting island visible" ($rest -ge 20 -and $rest -le 80) "$rest px tall"
-    Check "hover opens the island" ($open -ge 200) "$open px tall"
-    Check "leaving closes it again" ($closed -le 80) "$closed px tall"
+    [void][E2E.Win]::SetCursorPos($cx, $screen.Y + $screen.Height - 200); Start-Sleep -Milliseconds 600
+    # Resting island is 32 DIPs tall; 48 px below the top is inside its drop shadow at 100-125 % scaling.
+    $shadow = ClickTargetIsPerch $x ($screen.Y + 48) $p.Id
+    Check "click on the shadow under the island falls through" (-not $shadow) ""
+    $onIsland = ClickTargetIsPerch $x ($screen.Y + 14) $p.Id 120   # quicker than the 400 ms open delay
+    Check "click on the resting island hits the island" $onIsland ""
+    Start-Sleep -Milliseconds 1100                                  # pointer stays: the island opens
+    $openHit = ClickTargetIsPerch $x ($screen.Y + 200) $p.Id 120   # 200 px down is inside the open panel only
+    Check "hover opens the island" $openHit "click 200 px below the top lands on the open panel"
+    [void][E2E.Win]::SetCursorPos($cx, $screen.Y + $screen.Height - 200); Start-Sleep -Milliseconds 1600
+    $afterLeave = ClickTargetIsPerch $x ($screen.Y + 200) $p.Id 120
+    Check "leaving closes it again" (-not $afterLeave) "the same point falls through once closed"
 
     # Click-through: a point inside Perch's window rectangle but outside the island must belong to another window.
     $pt = New-Object E2E.Win+POINT; $pt.X = $cx + 330; $pt.Y = $screen.Y + 150
