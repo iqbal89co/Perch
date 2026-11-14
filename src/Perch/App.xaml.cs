@@ -16,6 +16,7 @@ namespace Perch;
 ///   --shape NAME         Docked|Floating for this run only
 ///   --expand PAGEID      open the island on that page and keep it open
 ///   --notify TEXT        show a notice on the resting island
+///   --demo-media         show a made-up playing track with lyrics instead of the system's media
 ///   --screenshot FILE    render the island to a PNG after --delay ms (default 1500), then exit
 ///   --list-pages FILE    write the discovered page ids to FILE, then exit
 /// </summary>
@@ -87,6 +88,7 @@ public partial class App : Application
 
         if (!isTestRun) _tray = new TrayIcon(_ctx, _island);
 
+        if (args.Has("--demo-media")) DemoMedia.Show(_ctx);
         if (args.Get("--notify") is { } text) _ctx.Notify("", text, TimeSpan.FromSeconds(30));
         if (args.Get("--expand") is { } page) _island.Expand(page, pin: true);
 

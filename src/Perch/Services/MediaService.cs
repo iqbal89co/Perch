@@ -54,6 +54,16 @@ public sealed class MediaService
 
     public MediaService(Dispatcher dispatcher) => _dispatcher = dispatcher;
 
+    private bool _demo;
+
+    /// <summary>Shows a made-up track instead of the system's (used by --demo-media for screenshots and tests).</summary>
+    internal void ShowDemo(MediaSnapshot snapshot)
+    {
+        _demo = true;
+        Current = snapshot;
+        Changed?.Invoke(Current);
+    }
+
     public async Task StartAsync()
     {
         try
@@ -133,7 +143,7 @@ public sealed class MediaService
             Log.Warn($"media: refresh failed ({ex.Message})");
         }
 
-        if (generation != _refreshGeneration) return; // a newer refresh is on its way
+        if (generation != _refreshGeneration || _demo) return; // a newer refresh is on its way, or a demo track is showing
         await _dispatcher.InvokeAsync(() =>
         {
             Current = snapshot is { HasTrack: true } ? snapshot : null;
