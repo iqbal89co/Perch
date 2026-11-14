@@ -89,14 +89,20 @@ public static class PrayerCalculator
         var maghrib = raw[5];
         var isha = raw[6];
 
-        // High latitudes: the sun may never reach the Fajr or Isha angle. Borrow a fraction of the night instead.
+        // High latitudes: the twilight angle may never be reached, or may take longer than a fraction of the night.
+        // Then Fajr and Isha are capped at that fraction of the night (the standard "angle-based" rule).
         if (rule != HighLatitudeRule.None && !double.IsNaN(sunrise) && !double.IsNaN(sunset))
         {
             var night = FixHour(sunrise - sunset);
-            if (double.IsNaN(fajr))
-                fajr = sunrise - Portion(rule, method.FajrAngle) * night;
-            if (double.IsNaN(isha) && method.IshaAngle is { } ishaAngle)
-                isha = sunset + Portion(rule, ishaAngle) * night;
+            var fajrLimit = sunrise - Portion(rule, method.FajrAngle) * night;
+            if (double.IsNaN(fajr) || sunrise - fajr > Portion(rule, method.FajrAngle) * night)
+                fajr = fajrLimit;
+            if (method.IshaAngle is { } ishaAngle)
+            {
+                var ishaLimit = sunset + Portion(rule, ishaAngle) * night;
+                if (double.IsNaN(isha) || isha - sunset > Portion(rule, ishaAngle) * night)
+                    isha = ishaLimit;
+            }
         }
 
         double Adjust(double value, PrayerKind kind)
@@ -110,8 +116,9 @@ public static class PrayerCalculator
         DateTimeOffset? ToLocal(double value)
         {
             if (double.IsNaN(value)) return null;
-            // Hours after local midnight. Each event is placed inside the requested local date.
-            var local = FixHour(value + tzHours - longitude / 15.0);
+            // Hours after local midnight of the requested date. Isha can pass midnight in summer; then it falls on
+            // the following calendar day, which is correct, so the value is not wrapped.
+            var local = value + tzHours - longitude / 15.0;
             var moment = date.ToDateTime(TimeOnly.MinValue).AddSeconds(Math.Round(local * 3600.0));
             return new DateTimeOffset(moment, offset);
         }
