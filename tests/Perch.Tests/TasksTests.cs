@@ -2,7 +2,6 @@ using Perch.Core;
 using Perch.Pages.Tasks;
 
 // The task tests write through the shared AppPaths root, so run the whole assembly one test at a time.
-[assembly: CollectionBehavior(DisableTestParallelization = true)]
 
 namespace Perch.Tests;
 
