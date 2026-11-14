@@ -1,0 +1,146 @@
+<core:IslandPage x:Class="Perch.Pages.SystemMonitor.SystemPage"
+                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                 xmlns:core="clr-namespace:Perch.Core"
+                 xmlns:local="clr-namespace:Perch.Pages.SystemMonitor">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="120" />
+            <RowDefinition Height="8" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="18" />
+        </Grid.RowDefinitions>
+
+        <!-- Top: CPU, memory, network and battery (the battery column collapses on desktops) -->
+        <Grid x:Name="TopRow">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition x:Name="BatteryColumn" Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- CPU -->
+            <Border Style="{StaticResource PerchCard}" Padding="12,9,12,8" Margin="0,0,8,0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Style="{StaticResource PerchCaption}" Text="CPU" FontSize="10.5" FontWeight="SemiBold" />
+                    <Grid Grid.Row="1" Width="58" Height="58" HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <local:RingGauge x:Name="CpuRing" LineWidth="6"
+                                         TrackBrush="{DynamicResource IslandCardHover}"
+                                         ValueBrush="{DynamicResource IslandAccent}" />
+                        <TextBlock x:Name="CpuText" Style="{StaticResource PerchTitle}" FontSize="14" FontWeight="Bold"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Grid>
+                    <local:Sparkline x:Name="CpuSpark" Grid.Row="2" Height="20" Margin="0,6,0,0"
+                                     Stroke="{DynamicResource IslandAccent}" />
+                </Grid>
+            </Border>
+
+            <!-- Memory -->
+            <Border Style="{StaticResource PerchCard}" Padding="12,9,12,8" Margin="0,0,8,0" Grid.Column="1">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Style="{StaticResource PerchCaption}" Text="MEMORY" FontSize="10.5" FontWeight="SemiBold" />
+                    <Grid Grid.Row="1" Width="58" Height="58" HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <local:RingGauge x:Name="MemRing" LineWidth="6"
+                                         TrackBrush="{DynamicResource IslandCardHover}"
+                                         ValueBrush="{DynamicResource IslandAccent}" />
+                        <TextBlock x:Name="MemText" Style="{StaticResource PerchTitle}" FontSize="14" FontWeight="Bold"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Grid>
+                    <TextBlock x:Name="MemDetail" Grid.Row="2" Style="{StaticResource PerchCaption}" FontSize="11"
+                               HorizontalAlignment="Center" Margin="0,6,0,0" />
+                </Grid>
+            </Border>
+
+            <!-- Network -->
+            <Border x:Name="NetworkCard" Style="{StaticResource PerchCard}" Padding="12,9,12,8" Margin="0,0,8,0" Grid.Column="2">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Style="{StaticResource PerchCaption}" Text="NETWORK" FontSize="10.5" FontWeight="SemiBold" />
+                    <StackPanel Grid.Row="1" Margin="0,4,0,0">
+                        <TextBlock x:Name="DownText" Style="{StaticResource PerchBody}" FontSize="12.5" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource IslandAccent}" />
+                        <TextBlock x:Name="UpText" Style="{StaticResource PerchBody}" FontSize="12" Foreground="{DynamicResource IslandSubtle}" />
+                    </StackPanel>
+                    <Grid Grid.Row="2" Margin="0,6,0,0">
+                        <local:Sparkline x:Name="UpSpark" Stroke="{DynamicResource IslandSubtle}" />
+                        <local:Sparkline x:Name="DownSpark" Stroke="{DynamicResource IslandAccent}" />
+                    </Grid>
+                </Grid>
+            </Border>
+
+            <!-- Battery -->
+            <Border x:Name="BatteryCard" Style="{StaticResource PerchCard}" Padding="12,9,12,8" Grid.Column="3">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Style="{StaticResource PerchCaption}" Text="BATTERY" FontSize="10.5" FontWeight="SemiBold" />
+                    <Grid Grid.Row="1" Width="58" Height="58" HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <local:RingGauge x:Name="BatRing" LineWidth="6"
+                                         TrackBrush="{DynamicResource IslandCardHover}"
+                                         ValueBrush="{DynamicResource IslandAccent}" />
+                        <TextBlock x:Name="BatText" Style="{StaticResource PerchTitle}" FontSize="14" FontWeight="Bold"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Grid>
+                    <TextBlock x:Name="BatDetail" Grid.Row="2" Style="{StaticResource PerchCaption}" FontSize="11"
+                               HorizontalAlignment="Center" Margin="0,6,0,0" />
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- Bottom: disks on the left, top processes on the right -->
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="300" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <Border Style="{StaticResource PerchCard}" Padding="12,9,12,9" Margin="0,0,8,0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Style="{StaticResource PerchCaption}" Text="DISKS" FontSize="10.5" FontWeight="SemiBold" />
+                    <StackPanel x:Name="DiskList" Grid.Row="1" Margin="0,6,0,0" />
+                    <TextBlock x:Name="DiskHint" Grid.Row="1" Style="{StaticResource PerchCaption}" Margin="0,6,0,0" Text="No fixed drives" Visibility="Collapsed" />
+                </Grid>
+            </Border>
+
+            <Border Style="{StaticResource PerchCard}" Padding="12,8,12,6" Grid.Column="1">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Style="{StaticResource PerchCaption}" Text="TOP PROCESSES" FontSize="10.5" FontWeight="SemiBold" />
+                    <StackPanel x:Name="ProcessList" Grid.Row="1" Margin="0,4,0,0" />
+                    <TextBlock x:Name="ProcessHint" Grid.Row="1" Style="{StaticResource PerchCaption}" Margin="0,6,0,0" Text="Measuring..." />
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- Caption: uptime and core count -->
+        <DockPanel Grid.Row="3" Margin="4,2,4,0">
+            <TextBlock x:Name="CoresText" DockPanel.Dock="Right" Style="{StaticResource PerchCaption}" FontSize="11" />
+            <TextBlock x:Name="UptimeText" Style="{StaticResource PerchCaption}" FontSize="11" />
+        </DockPanel>
+    </Grid>
+</core:IslandPage>
