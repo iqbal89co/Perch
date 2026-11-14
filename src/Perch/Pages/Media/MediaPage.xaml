@@ -1,0 +1,143 @@
+<core:IslandPage x:Class="Perch.Pages.Media.MediaPage"
+                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                 xmlns:core="clr-namespace:Perch.Core">
+    <core:IslandPage.Resources>
+        <!-- Filled accent circle for play / pause. -->
+        <Style x:Key="MediaPlayButton" TargetType="Button">
+            <Setter Property="Width" Value="44" />
+            <Setter Property="Height" Value="44" />
+            <Setter Property="FontFamily" Value="{StaticResource IconFont}" />
+            <Setter Property="FontSize" Value="17" />
+            <Setter Property="Foreground" Value="{DynamicResource IslandOnAccent}" />
+            <Setter Property="Background" Value="{DynamicResource IslandAccent}" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bg" Background="{TemplateBinding Background}" CornerRadius="22">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bg" Property="Opacity" Value="0.88" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bg" Property="Opacity" Value="0.7" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </core:IslandPage.Resources>
+
+    <Grid>
+        <!-- Nothing playing -->
+        <StackPanel x:Name="EmptyPanel" Width="380" VerticalAlignment="Center" HorizontalAlignment="Center">
+            <Border Width="56" Height="56" CornerRadius="28" Background="{DynamicResource IslandCard}" HorizontalAlignment="Center" Margin="0,0,0,12">
+                <TextBlock Text="&#xE8D6;" FontFamily="{StaticResource IconFont}" FontSize="22"
+                           Foreground="{DynamicResource IslandSubtle}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Border>
+            <TextBlock Text="Nothing playing" Style="{StaticResource PerchTitle}" FontSize="16" HorizontalAlignment="Center" />
+            <TextBlock Text="Play music in Spotify, a browser or any app that shows in Windows' media controls"
+                       Style="{StaticResource PerchCaption}" TextAlignment="Center" TextWrapping="Wrap" Margin="0,6,0,0" />
+        </StackPanel>
+
+        <!-- Now playing -->
+        <Grid x:Name="PlayerGrid" Visibility="Collapsed">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition x:Name="LeftColumn" Width="300" />
+                <ColumnDefinition x:Name="SpacerColumn" Width="16" />
+                <ColumnDefinition x:Name="LyricsColumn" Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <Grid x:Name="LeftPane" Grid.Column="0" VerticalAlignment="Center" MaxWidth="420">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <!-- Artwork and track info -->
+                <Grid Grid.Row="0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="14" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <Grid Width="132" Height="132" VerticalAlignment="Top">
+                        <Grid.Effect>
+                            <DropShadowEffect BlurRadius="18" ShadowDepth="4" Direction="90" Opacity="0.35" />
+                        </Grid.Effect>
+                        <Border CornerRadius="14" Background="{DynamicResource IslandCard}">
+                            <TextBlock x:Name="ArtGlyph" Text="&#xE8D6;" FontFamily="{StaticResource IconFont}" FontSize="46"
+                                       Foreground="{DynamicResource IslandSubtle}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <Border x:Name="ArtImage" CornerRadius="14" Visibility="Collapsed">
+                            <Border.Background>
+                                <ImageBrush x:Name="ArtBrush" Stretch="UniformToFill" />
+                            </Border.Background>
+                        </Border>
+                    </Grid>
+
+                    <Grid Grid.Column="2" VerticalAlignment="Center">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <TextBlock Grid.Row="0" x:Name="SourceText" Style="{StaticResource PerchCaption}"
+                                   FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource IslandAccent}" />
+                        <TextBlock Grid.Row="1" x:Name="TitleText" Style="{StaticResource PerchTitle}" FontSize="17" Margin="0,6,0,0" />
+                        <TextBlock Grid.Row="2" x:Name="ArtistText" Style="{StaticResource PerchBody}"
+                                   Foreground="{DynamicResource IslandSubtle}" Margin="0,3,0,0" />
+                    </Grid>
+                </Grid>
+
+                <!-- Seek -->
+                <Grid Grid.Row="1" Margin="0,18,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock x:Name="ElapsedText" Style="{StaticResource PerchCaption}" MinWidth="34" />
+                    <Slider x:Name="Seek" Grid.Column="1" Style="{StaticResource PerchSlider}" Minimum="0" Maximum="1" Margin="10,0" />
+                    <TextBlock x:Name="RemainingText" Grid.Column="2" Style="{StaticResource PerchCaption}" MinWidth="34" TextAlignment="Right" />
+                </Grid>
+
+                <!-- Transport -->
+                <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,8,0,0">
+                    <Button x:Name="PrevButton" Style="{StaticResource PerchIconButton}" Content="&#xE892;" ToolTip="Previous" Margin="0,0,14,0" />
+                    <Button x:Name="PlayButton" Style="{StaticResource MediaPlayButton}" Content="&#xE768;" ToolTip="Play or pause" />
+                    <Button x:Name="NextButton" Style="{StaticResource PerchIconButton}" Content="&#xE893;" ToolTip="Next" Margin="14,0,0,0" />
+                </StackPanel>
+            </Grid>
+
+            <!-- Lyrics -->
+            <Border x:Name="LyricsCard" Grid.Column="2" Style="{StaticResource PerchCard}" Padding="18,12">
+                <Grid>
+                    <TextBlock x:Name="LyricsStatusText" Style="{StaticResource PerchCaption}" FontSize="13"
+                               TextAlignment="Center" TextWrapping="Wrap" HorizontalAlignment="Center" VerticalAlignment="Center" />
+
+                    <ScrollViewer x:Name="PlainScroll" Visibility="Collapsed" VerticalScrollBarVisibility="Auto" Padding="0,0,10,0">
+                        <TextBlock x:Name="PlainText" Style="{StaticResource PerchBody}" FontSize="13"
+                                   TextWrapping="Wrap" TextTrimming="None" Margin="0,0,0,4" />
+                    </ScrollViewer>
+
+                    <StackPanel x:Name="SyncedPanel" VerticalAlignment="Center" Visibility="Collapsed">
+                        <TextBlock x:Name="PrevLyric" Style="{StaticResource PerchBody}" Foreground="{DynamicResource IslandSubtle}"
+                                   FontSize="12.5" TextAlignment="Center" TextWrapping="Wrap" TextTrimming="None" />
+                        <TextBlock x:Name="CurrentLyric" Style="{StaticResource PerchBody}" FontSize="15" FontWeight="SemiBold"
+                                   TextAlignment="Center" TextWrapping="Wrap" TextTrimming="None" Margin="0,10" />
+                        <TextBlock x:Name="NextLyric" Style="{StaticResource PerchBody}" Foreground="{DynamicResource IslandSubtle}"
+                                   FontSize="12.5" TextAlignment="Center" TextWrapping="Wrap" TextTrimming="None" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</core:IslandPage>
