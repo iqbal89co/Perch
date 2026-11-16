@@ -51,7 +51,7 @@ $data = NewData
 $list = Join-Path $data "pages.txt"
 $ok = RunPerch @("--data-dir", $data, "--list-pages", $list)
 $pages = if (Test-Path $list) { Get-Content $list | ForEach-Object { ($_ -split "`t")[0] } } else { @() }
-$expected = "media", "today", "shelf", "tasks", "focus", "ai", "prayer", "system"
+$expected = "media", "today", "shelf", "tasks", "focus", "ai", "prayer", "quran", "system"
 $missing = $expected | Where-Object { $pages -notcontains $_ }
 Check "all pages discovered" ($ok -and -not $missing) ("found: " + ($pages -join ", ") + $(if ($missing) { "; missing: " + ($missing -join ", ") } else { "" }))
 
