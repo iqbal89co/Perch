@@ -10,8 +10,9 @@ using Geo = Windows.Devices.Geolocation;
 namespace Perch.Pages.Prayer;
 
 /// <summary>
-/// Prayer times for the chosen city, computed on the device. The day view shows the next prayer, the six times
-/// and the qibla; the settings view picks the city and the reminder options. A 1 s timer drives the countdown on
+/// Prayer times for the chosen city, computed on the device. The day view shows the next prayer, the eight times
+/// and a strip of facts (night, day length, qibla, next Islamic date); the settings view picks the city and the
+/// reminder options. A 1 s timer drives the countdown on
 /// the resting island and the prayer-time notices, and keeps running while the island is closed.
 /// </summary>
 public partial class PrayerPage : IslandPage
@@ -20,8 +21,6 @@ public partial class PrayerPage : IslandPage
     private const string PrayerGlyph = ""; // crescent moon
     private const string LocationOff = "Location is off — pick your city instead";
 
-    private static readonly PrayerKind[] Shown =
-        { PrayerKind.Fajr, PrayerKind.Sunrise, PrayerKind.Dhuhr, PrayerKind.Asr, PrayerKind.Maghrib, PrayerKind.Isha };
     private static readonly PrayerKind[] Five =
         { PrayerKind.Fajr, PrayerKind.Dhuhr, PrayerKind.Asr, PrayerKind.Maghrib, PrayerKind.Isha };
     private static readonly Lazy<byte[]> Chime = new(() => PrayerSound.BuildChimeWav());
@@ -32,9 +31,18 @@ public partial class PrayerPage : IslandPage
     private PrayerDay? _tomorrow;
     private DateOnly _day;
     private DateTimeOffset _lastTick;
+    private PrayerDay? _yesterday;
     private string _tilesKey = string.Empty;
     private bool _locating;
+    private bool _shown;
+    private double _progress;
     private SoundPlayer? _player;
+
+    // Day-view facts, worked out once per day (or per place) and formatted on each render.
+    private (DateTimeOffset Midnight, DateTimeOffset LastThird)? _night;
+    private TimeSpan? _dayLength;
+    private IslamicEvent? _islamic;
+    private (double Bearing, double DistanceKm)? _qibla;
 
     public override string Id => "prayer";
     public override string Title => "Prayer";
@@ -64,6 +72,7 @@ public partial class PrayerPage : IslandPage
         NotifyToggle.Click += (_, _) => { _settings.Notify = NotifyToggle.IsChecked == true; Save(); };
 
         _timer.Tick += (_, _) => OnTick();
+        ProgressTrack.SizeChanged += (_, _) => ApplyProgressWidth();
 
         RecomputeDay();
         RenderPlaces();
@@ -74,9 +83,13 @@ public partial class PrayerPage : IslandPage
 
     public override void OnShown()
     {
+        _shown = true;
         if (_settings.HasLocation && DateOnly.FromDateTime(DateTime.Now) != _day) RecomputeDay();
         Refresh(DateTimeOffset.Now);
     }
+
+    // The day view is only drawn while the page is visible; the reminder logic keeps running regardless.
+    public override void OnHidden() => _shown = false;
 
     // ---- Clock -------------------------------------------------------------------------------------------
 
@@ -155,9 +168,17 @@ public partial class PrayerPage : IslandPage
         _day = today;
         _today = null;
         _tomorrow = null;
+        _yesterday = null;
+        _night = null;
+        _dayLength = null;
+        _qibla = null;
         _tilesKey = string.Empty;
-        DateText.Text = PrayerText.DateCaption(today);
-        PlaceText.Text = string.IsNullOrWhiteSpace(_settings.PlaceName) ? "Prayer" : _settings.PlaceName;
+        _islamic = PrayerCalculator.NextIslamicEvent(today);
+
+        var city = string.IsNullOrWhiteSpace(_settings.PlaceName) ? "Prayer" : _settings.PlaceName;
+        PlaceText.Text = $"{city} · {PrayerText.DateCaption(today)}";
+        var hanafi = string.Equals(_settings.Asr, "hanafi", StringComparison.OrdinalIgnoreCase);
+        DateText.Text = $"{PrayerText.MethodShortName(_settings.Method)} · {(hanafi ? "Hanafi" : "Standard")} Asr";
 
         if (!_settings.HasLocation)
         {
@@ -169,15 +190,20 @@ public partial class PrayerPage : IslandPage
         var lon = _settings.Longitude!.Value;
         var zone = PrayerPlaces.ResolveZone(_settings.TimeZoneId);
         var method = PrayerMethods.Find(_settings.Method);
-        var asr = string.Equals(_settings.Asr, "hanafi", StringComparison.OrdinalIgnoreCase) ? AsrSchool.Hanafi : AsrSchool.Standard;
+        var asr = hanafi ? AsrSchool.Hanafi : AsrSchool.Standard;
         var extra = ExtraMinutes();
 
         _today = PrayerCalculator.Calculate(today, lat, lon, 0, zone, method, asr, HighLatitudeRule.AngleBased, extra);
         _tomorrow = PrayerCalculator.Calculate(today.AddDays(1), lat, lon, 0, zone, method, asr, HighLatitudeRule.AngleBased, extra);
+        _yesterday = PrayerCalculator.Calculate(today.AddDays(-1), lat, lon, 0, zone, method, asr, HighLatitudeRule.AngleBased, extra);
+
+        _night = PrayerCalculator.Night(_today.Maghrib, _tomorrow.Fajr);
+        if (_today.Sunrise is { } sunrise && _today.Maghrib is { } maghrib)
+            _dayLength = PrayerCalculator.DayLength(sunrise, maghrib);
 
         var bearing = PrayerCalculator.QiblaBearing(lat, lon);
+        _qibla = (bearing, PrayerCalculator.DistanceToKaabaKm(lat, lon));
         QiblaRotate.Angle = bearing;
-        QiblaText.Text = $"Qibla {Math.Round(bearing):0}°";
         QiblaPanel.Visibility = Visibility.Visible;
     }
 
@@ -193,7 +219,18 @@ public partial class PrayerPage : IslandPage
 
     // ---- Rendering ---------------------------------------------------------------------------------------
 
+    /// <summary>
+    /// Reminders and the resting pill run on every tick. The day view is drawn only while the page is shown,
+    /// so a hidden page costs nothing beyond the reminder check.
+    /// </summary>
     private void Refresh(DateTimeOffset now)
+    {
+        var next = _settings.HasLocation && _today is not null ? PrayerCalculator.Next(_today, now, _tomorrow) : null;
+        if (_shown) RenderDay(now, next);
+        PostPill(next, now);
+    }
+
+    private void RenderDay(DateTimeOffset now, (string Name, DateTimeOffset Time)? next)
     {
         var use24h = IslandContext.Current?.Settings.Use24h ?? true;
         if (!_settings.HasLocation || _today is null)
@@ -201,13 +238,14 @@ public partial class PrayerPage : IslandPage
             NextNameText.Text = "Prayer";
             NextTimeText.Text = "--:--";
             NextCountdownText.Text = "Choose your city";
+            ProgressText.Text = string.Empty;
+            _progress = 0;
+            ApplyProgressWidth();
             TilesGrid.Children.Clear();
             _tilesKey = string.Empty;
-            PostPill(null, now);
             return;
         }
 
-        var next = PrayerCalculator.Next(_today, now, _tomorrow);
         if (next is { } n)
         {
             NextNameText.Text = n.Name;
@@ -221,49 +259,85 @@ public partial class PrayerPage : IslandPage
             NextCountdownText.Text = string.Empty;
         }
 
-        // After Isha the tiles move on to tomorrow, so they always match the card above them.
-        var last = _today.Isha ?? _today.Maghrib;
-        var tilesDay = last is { } lastTime && now >= lastTime && _tomorrow is not null ? _tomorrow : _today;
-        RenderTiles(tilesDay, now, next?.Time, use24h);
-        PostPill(next, now);
+        RenderProgress(now, next);
+        RenderTiles(_today, now, use24h);
+        RenderFacts(use24h);
     }
 
-    /// <summary>Six tiles: the next prayer highlighted, passed times in the subtle colour. Rebuilt only when that changes.</summary>
-    private void RenderTiles(PrayerDay day, DateTimeOffset now, DateTimeOffset? nextTime, bool use24h)
+    /// <summary>The bar fills from the previous prayer to the next one; the caption says how long since the previous.</summary>
+    private void RenderProgress(DateTimeOffset now, (string Name, DateTimeOffset Time)? next)
     {
-        var states = Shown.Select(kind =>
+        var previous = PrayerCalculator.PreviousPrayer(_today!, now, _yesterday);
+        if (next is { } n && previous is { } p)
         {
-            var time = day.At(kind);
-            var state = time is null ? "none" : time == nextTime ? "next" : time < now ? "past" : "future";
-            return $"{kind}:{state}";
-        });
-        var key = $"{day.Date:yyyy-MM-dd}|" + string.Join(",", states);
+            _progress = PrayerCalculator.PrayerProgress(p.Time, n.Time, now);
+            ProgressText.Text = $"since {p.Name} · {PrayerText.Elapsed(now - p.Time)}";
+        }
+        else
+        {
+            _progress = 0;
+            ProgressText.Text = string.Empty;
+        }
+
+        ApplyProgressWidth();
+    }
+
+    private void ApplyProgressWidth() => ProgressFill.Width = Math.Max(0, ProgressTrack.ActualWidth * _progress);
+
+    /// <summary>
+    /// Eight times: the current period (the last time that has passed) gets the accent soft background, the times
+    /// before it are dimmed. Rebuilt only when the day, the clock format or the current period changes.
+    /// </summary>
+    private void RenderTiles(PrayerDay day, DateTimeOffset now, bool use24h)
+    {
+        var entries = new (string Label, DateTimeOffset? Time)[]
+        {
+            ("Imsak", PrayerCalculator.Imsak(day)),
+            ("Fajr", day.Fajr),
+            ("Sunrise", day.Sunrise),
+            ("Dhuha", day.Dhuha),
+            ("Dhuhr", day.Dhuhr),
+            ("Asr", day.Asr),
+            ("Maghrib", day.Maghrib),
+            ("Isha", day.Isha),
+        };
+
+        var current = -1;
+        for (var i = 0; i < entries.Length; i++)
+        {
+            if (entries[i].Time is { } t && t <= now) current = i;
+        }
+
+        var key = $"{day.Date:yyyy-MM-dd}|{use24h}|{current}";
         if (key == _tilesKey) return;
         _tilesKey = key;
 
         TilesGrid.Children.Clear();
-        foreach (var kind in Shown)
+        for (var i = 0; i < entries.Length; i++)
         {
-            var time = day.At(kind);
-            var isNext = time is not null && time == nextTime;
-            var isPast = time is { } t && t < now;
+            var (label, time) = entries[i];
+            var isCurrent = i == current;
+            var isPassed = i < current;
 
-            var name = new TextBlock { Text = kind.ToString(), FontSize = 11.5, Style = (Style)FindResource("PerchCaption") };
+            var name = new TextBlock { Text = label, FontSize = 11, Style = (Style)FindResource("PerchCaption") };
             var value = new TextBlock
             {
                 Text = time is { } v ? PrayerText.Clock(v, use24h) : "—",
                 Style = (Style)FindResource("PerchBody"),
                 FontSize = 15,
-                FontWeight = isNext ? FontWeights.Bold : FontWeights.SemiBold,
+                FontWeight = isCurrent ? FontWeights.Bold : FontWeights.SemiBold,
             };
             Typography.SetNumeralAlignment(value, FontNumeralAlignment.Tabular);
-            if (isPast) name.SetResourceReference(TextBlock.ForegroundProperty, "IslandSubtle");
-            if (isPast) value.SetResourceReference(TextBlock.ForegroundProperty, "IslandSubtle");
+            if (isPassed)
+            {
+                name.SetResourceReference(TextBlock.ForegroundProperty, "IslandSubtle");
+                value.SetResourceReference(TextBlock.ForegroundProperty, "IslandSubtle");
+            }
 
             var tile = new Border
             {
                 CornerRadius = new CornerRadius(10),
-                Padding = new Thickness(10, 6, 10, 6),
+                Padding = new Thickness(8, 4, 8, 4),
                 Margin = new Thickness(0, 0, 6, 6),
                 Child = new StackPanel
                 {
@@ -271,9 +345,20 @@ public partial class PrayerPage : IslandPage
                     Children = { name, value },
                 },
             };
-            tile.SetResourceReference(Border.BackgroundProperty, isNext ? "IslandAccentSoft" : "IslandCard");
+            tile.SetResourceReference(Border.BackgroundProperty, isCurrent ? "IslandAccentSoft" : "IslandCard");
             TilesGrid.Children.Add(tile);
         }
+    }
+
+    /// <summary>The bottom strip: midnight and last third, day length, qibla and the next Islamic date.</summary>
+    private void RenderFacts(bool use24h)
+    {
+        NightText.Text = _night is { } night
+            ? $"Midnight {PrayerText.Clock(night.Midnight, use24h)} · Last third {PrayerText.Clock(night.LastThird, use24h)}"
+            : "Night —";
+        DayLengthText.Text = _dayLength is { } length ? $"Day {PrayerText.Elapsed(length)}" : "Day —";
+        IslamicText.Text = _islamic is { } islamic ? PrayerText.IslamicEventCaption(islamic) : string.Empty;
+        QiblaText.Text = _qibla is { } qibla ? PrayerText.Qibla(qibla.Bearing, qibla.DistanceKm) : string.Empty;
     }
 
     /// <summary>The resting-island countdown during the reminder window before the next prayer.</summary>

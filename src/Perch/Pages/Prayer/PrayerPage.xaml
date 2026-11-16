@@ -26,53 +26,80 @@
         </Style>
     </core:IslandPage.Resources>
     <Grid>
-        <!-- Day view: the next prayer, the six times and the qibla -->
+        <!-- Day view: header, next prayer with progress, eight times, and a strip of facts -->
         <Grid x:Name="DayView">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
             <DockPanel>
                 <Button x:Name="SettingsButton" DockPanel.Dock="Right" VerticalAlignment="Top"
                         Style="{StaticResource PerchIconButton}" Content="&#xE713;" ToolTip="Prayer settings" />
                 <StackPanel>
-                    <TextBlock x:Name="PlaceText" Style="{StaticResource PerchTitle}" FontSize="18" />
+                    <TextBlock x:Name="PlaceText" Style="{StaticResource PerchTitle}" FontSize="16" />
                     <TextBlock x:Name="DateText" Style="{StaticResource PerchCaption}" Margin="0,1,0,0" />
                 </StackPanel>
             </DockPanel>
 
-            <Grid Grid.Row="1" Margin="0,10,0,0">
+            <Grid Grid.Row="1" Margin="0,8,0,0">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="196" />
-                    <ColumnDefinition Width="14" />
+                    <ColumnDefinition Width="170" />
+                    <ColumnDefinition Width="12" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
 
-                <!-- Next prayer -->
-                <Border Style="{StaticResource PerchCard}" Padding="16,14">
-                    <StackPanel VerticalAlignment="Center">
-                        <TextBlock Text="NEXT PRAYER" Style="{StaticResource PerchCaption}" FontSize="11"
-                                   FontWeight="SemiBold" Foreground="{DynamicResource IslandAccent}" />
-                        <TextBlock x:Name="NextNameText" Style="{StaticResource PerchTitle}" FontSize="26" Margin="0,4,0,0" />
-                        <TextBlock x:Name="NextTimeText" Style="{StaticResource PerchTitle}" FontSize="40"
-                                   FontWeight="Bold" Margin="0,-6,0,0" />
-                        <TextBlock x:Name="NextCountdownText" Style="{StaticResource PerchBody}" FontSize="13"
-                                   Margin="0,6,0,0" Foreground="{DynamicResource IslandAccent}" />
-                    </StackPanel>
+                <!-- Next prayer, with how far we are since the previous one -->
+                <Border Style="{StaticResource PerchCard}" Padding="14,10">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="NEXT PRAYER" Style="{StaticResource PerchCaption}" FontSize="10.5"
+                                       FontWeight="SemiBold" Foreground="{DynamicResource IslandAccent}" />
+                            <TextBlock x:Name="NextNameText" Style="{StaticResource PerchTitle}" FontSize="20" Margin="0,2,0,0" />
+                            <TextBlock x:Name="NextTimeText" Style="{StaticResource PerchTitle}" FontSize="32"
+                                       FontWeight="Bold" Margin="0,-4,0,0" />
+                            <TextBlock x:Name="NextCountdownText" Style="{StaticResource PerchBody}" FontSize="12.5"
+                                       Margin="0,2,0,0" Foreground="{DynamicResource IslandAccent}" />
+                        </StackPanel>
+
+                        <StackPanel Grid.Row="1">
+                            <Grid x:Name="ProgressTrack" Height="4" Margin="0,0,0,4">
+                                <Border CornerRadius="2" Background="{DynamicResource IslandStroke}" />
+                                <Border x:Name="ProgressFill" HorizontalAlignment="Left" Width="0" CornerRadius="2"
+                                        Background="{DynamicResource IslandAccent}" />
+                            </Grid>
+                            <TextBlock x:Name="ProgressText" Style="{StaticResource PerchCaption}" FontSize="10.5" />
+                        </StackPanel>
+                    </Grid>
                 </Border>
 
-                <Grid Grid.Column="2">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="*" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
+                <!-- Eight times in a 4 x 2 grid; the current period is highlighted, passed ones are dimmed -->
+                <UniformGrid x:Name="TilesGrid" Grid.Column="2" Columns="4" Rows="2" />
+            </Grid>
 
-                    <UniformGrid x:Name="TilesGrid" Columns="3" Rows="2" />
-
-                    <StackPanel x:Name="QiblaPanel" Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
-                        <TextBlock x:Name="QiblaText" Style="{StaticResource PerchCaption}" VerticalAlignment="Center" Margin="0,0,10,0" />
-                        <Grid Width="56" Height="56" ToolTip="Direction of the Kaaba from here">
+            <!-- Facts strip: night, day length, qibla, next Islamic date -->
+            <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,10,0,0">
+                <StackPanel Orientation="Horizontal" Margin="0,0,18,0">
+                    <TextBlock Style="{StaticResource PerchGlyph}" Text="&#xE708;" FontSize="13" Margin="0,0,6,0" />
+                    <TextBlock x:Name="NightText" Style="{StaticResource PerchCaption}" FontSize="11.5" VerticalAlignment="Center" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,0,18,0">
+                    <TextBlock Style="{StaticResource PerchGlyph}" Text="&#xE706;" FontSize="13" Margin="0,0,6,0" />
+                    <TextBlock x:Name="DayLengthText" Style="{StaticResource PerchCaption}" FontSize="11.5" VerticalAlignment="Center" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,0,18,0">
+                    <TextBlock Style="{StaticResource PerchGlyph}" Text="&#xE787;" FontSize="13" Margin="0,0,6,0" />
+                    <TextBlock x:Name="IslamicText" Style="{StaticResource PerchCaption}" FontSize="11.5" VerticalAlignment="Center" />
+                </StackPanel>
+                <StackPanel x:Name="QiblaPanel" Orientation="Horizontal">
+                    <Viewbox Width="36" Height="36" Margin="0,0,6,0" ToolTip="Direction of the Kaaba from here">
+                        <Grid Width="56" Height="56">
                             <Ellipse Fill="{DynamicResource IslandCard}" Stroke="{DynamicResource IslandStroke}" StrokeThickness="1" />
                             <Grid x:Name="QiblaNeedle" RenderTransformOrigin="0.5,0.5">
                                 <Grid.RenderTransform>
@@ -82,9 +109,10 @@
                             </Grid>
                             <Ellipse Width="5" Height="5" Fill="{DynamicResource IslandForeground}" />
                         </Grid>
-                    </StackPanel>
-                </Grid>
-            </Grid>
+                    </Viewbox>
+                    <TextBlock x:Name="QiblaText" Style="{StaticResource PerchCaption}" FontSize="11.5" VerticalAlignment="Center" />
+                </StackPanel>
+            </StackPanel>
         </Grid>
 
         <!-- Settings view: city, method, reminders -->
