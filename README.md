@@ -10,7 +10,7 @@ going in. Point at it and it springs open into a panel with tabs.
 
 <p align="center">
   <img src="docs/screens/media-tide.png" width="49%" alt="Music tab in the Tide theme">
-  <img src="docs/screens/media-apricot.png" width="49%" alt="Music tab in the Apricot theme">
+  <img src="docs/screens/quran-apricot.png" width="49%" alt="Quran tab playing Ya-Sin in the Apricot theme">
 </p>
 <p align="center">
   <img src="docs/screens/prayer-tide.png" width="49%" alt="Prayer tab in the Tide theme">
