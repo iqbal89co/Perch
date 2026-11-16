@@ -126,20 +126,227 @@ public class ProcessPercentTests
     [Fact]
     public void Top_processes_are_sorted_descending_and_limited()
     {
-        var byName = new Dictionary<string, double>
+        var all = new[]
         {
-            ["chrome"] = 0.12,
-            ["code"] = 0.30,
-            ["explorer"] = 0.02,
-            ["zed"] = 0.12,
-            ["svchost"] = 0.05,
+            new ProcessUsage("chrome", 0.12, 100),
+            new ProcessUsage("code", 0.30, 200),
+            new ProcessUsage("explorer", 0.02, 300),
+            new ProcessUsage("zed", 0.12, 400),
+            new ProcessUsage("svchost", 0.05, 500),
         };
-        var top = SystemMath.TopProcesses(byName, 4);
+        var top = SystemMath.TopProcesses(all, 4);
         Assert.Equal(4, top.Count);
         Assert.Equal("code", top[0].Name);
         Assert.Equal("chrome", top[1].Name); // ties go by name
         Assert.Equal("zed", top[2].Name);
         Assert.Equal("svchost", top[3].Name);
+        Assert.Equal(200, top[0].MemoryBytes); // memory travels with the row
+    }
+
+    [Fact]
+    public void Top_processes_with_fewer_entries_than_the_limit_return_them_all()
+    {
+        var top = SystemMath.TopProcesses(new[] { new ProcessUsage("only", 0.5, 1) }, 4);
+        Assert.Single(top);
+        Assert.Empty(SystemMath.TopProcesses(Array.Empty<ProcessUsage>(), 4));
+    }
+}
+
+public class GpuMathTests
+{
+    [Fact]
+    public void Engines_of_one_adapter_are_summed()
+    {
+        var engines = new[]
+        {
+            ("pid_100_luid_0x0_0x1_phys_0_eng_0_engtype_3D", 20.0),
+            ("pid_200_luid_0x0_0x1_phys_0_eng_1_engtype_3D", 15.5),
+        };
+        Assert.Equal(35.5, SystemMath.GpuUtilization(engines), 6);
+    }
+
+    [Fact]
+    public void The_busiest_adapter_wins_not_the_sum_across_adapters()
+    {
+        var engines = new[]
+        {
+            ("pid_1_luid_0x0_0x1_phys_0_eng_0_engtype_3D", 30.0),
+            ("pid_2_luid_0x0_0x1_phys_0_eng_1_engtype_3D", 20.0), // adapter 0: 50
+            ("pid_3_luid_0x0_0x2_phys_1_eng_0_engtype_3D", 60.0), // adapter 1: 60
+        };
+        Assert.Equal(60.0, SystemMath.GpuUtilization(engines), 6);
+    }
+
+    [Fact]
+    public void Utilisation_is_clamped_to_100()
+    {
+        var engines = new[]
+        {
+            ("pid_1_luid_0x0_0x1_phys_0_eng_0_engtype_3D", 60.0),
+            ("pid_2_luid_0x0_0x1_phys_0_eng_1_engtype_3D", 70.0), // adapter 0 sums to 130
+        };
+        Assert.Equal(100, SystemMath.GpuUtilization(engines), 6);
+    }
+
+    [Fact]
+    public void Adapter_key_drops_the_process_and_engine_parts()
+    {
+        Assert.Equal("luid_0x0_0x1_phys_0",
+            SystemMath.AdapterKey("pid_4312_luid_0x0_0x1_phys_0_eng_3_engtype_3D"));
+        Assert.Equal("luid_0x0_0x1_phys_0", SystemMath.AdapterKey("luid_0x0_0x1_phys_0"));
+    }
+
+    [Fact]
+    public void No_instances_reads_zero()
+    {
+        Assert.Equal(0, SystemMath.GpuUtilization(Array.Empty<(string, double)>()));
+        Assert.Equal(0, SystemMath.LargestAdapterTotal(Array.Empty<(string, double)>()));
+    }
+
+    [Fact]
+    public void Dedicated_memory_is_the_largest_adapter_total()
+    {
+        var memory = new[]
+        {
+            ("luid_0x0_0x1_phys_0", 1_288_490_188.0),
+            ("luid_0x0_0x2_phys_0", 512.0 * 1024 * 1024),
+        };
+        Assert.Equal(1_288_490_188.0, SystemMath.LargestAdapterTotal(memory), 6);
+    }
+
+    [Theory]
+    [InlineData(10, 2)]
+    [InlineData(30, 2)]
+    [InlineData(31, 5)]
+    [InlineData(120, 5)]
+    public void Slow_gpu_samples_back_off_to_five_seconds(double sampleMs, int expectedSeconds) =>
+        Assert.Equal(TimeSpan.FromSeconds(expectedSeconds), SystemMath.GpuSampleInterval(sampleMs));
+
+    [Fact]
+    public void Vram_text_uses_one_decimal_or_nothing()
+    {
+        Assert.Equal("1.2 GB VRAM", SystemMath.VramText((long)(1.2 * 1024 * 1024 * 1024)));
+        Assert.Equal("", SystemMath.VramText(null));
+    }
+}
+
+public class DeviceTextTests
+{
+    private const long GiB = 1024L * 1024 * 1024;
+
+    [Theory]
+    [InlineData(3400, "3.4 GHz")]
+    [InlineData(2995.2, "3.0 GHz")]
+    [InlineData(0, "0.0 GHz")]
+    public void Clock_reads_in_gigahertz(double mhz, string expected) =>
+        Assert.Equal(expected, SystemMath.FormatGHz(mhz));
+
+    [Fact]
+    public void Current_clock_scales_the_base_by_processor_performance()
+    {
+        Assert.Equal(3300, SystemMath.CurrentMhz(3000, 110), 6);
+        Assert.Equal(1500, SystemMath.CurrentMhz(3000, 50), 6);
+    }
+
+    [Fact]
+    public void Without_a_performance_counter_the_clock_is_the_base()
+    {
+        Assert.Equal(2900, SystemMath.CurrentMhz(2900, null), 6);
+        Assert.Equal(2900, SystemMath.CurrentMhz(2900, 0), 6);
+    }
+
+    [Fact]
+    public void Cpu_detail_shows_clock_and_threads_or_threads_alone()
+    {
+        Assert.Equal("3.4 GHz · 12 threads", SystemMath.CpuDetail(3400, 12));
+        Assert.Equal("12 threads", SystemMath.CpuDetail(0, 12));
+    }
+
+    [Theory]
+    [InlineData(2, 10, "2 h 10 m left")]
+    [InlineData(0, 45, "45 m left")]
+    [InlineData(0, 0, "<1 m left")]
+    public void Battery_time_left_in_hours_and_minutes(int hours, int minutes, string expected) =>
+        Assert.Equal(expected, SystemMath.FormatBatteryLeft(new TimeSpan(hours, minutes, 0)));
+
+    [Theory]
+    [InlineData(true, false, null, "Charging")]
+    [InlineData(true, true, null, "Charging")]
+    [InlineData(false, true, null, "Plugged in")]
+    [InlineData(false, false, "2h10", "On battery · 2 h 10 m left")]
+    [InlineData(false, false, null, "On battery")]
+    public void Power_status_text(bool charging, bool pluggedIn, string? time, string expected) =>
+        Assert.Equal(expected, SystemMath.PowerStatusText(charging, pluggedIn, time is null ? null : new TimeSpan(2, 10, 0)));
+
+    [Fact]
+    public void Memory_detail_reads_used_total_and_free()
+    {
+        var text = SystemMath.MemoryDetail((long)(16.1 * GiB), 20 * GiB, (long)(3.9 * GiB));
+        Assert.Equal("16.1 / 20 GB · 3.9 GB free", text);
+    }
+
+    [Fact]
+    public void Disk_activity_reads_read_and_write_rates_or_dashes()
+    {
+        Assert.Equal("R 12 MB/s · W 3 MB/s", SystemMath.DiskActivity(12 * 1024 * 1024, 3 * 1024 * 1024));
+        Assert.Equal("R — · W —", SystemMath.DiskActivity(null, null));
+    }
+
+    [Fact]
+    public void Network_totals_read_received_and_sent()
+    {
+        Assert.Equal("Since start ↓ 1.2 GB · ↑ 300 MB",
+            SystemMath.NetworkTotals((long)(1.2 * GiB), 300L * 1024 * 1024));
+    }
+
+    [Theory]
+    [InlineData(26200, "Windows 11 26200")]
+    [InlineData(22000, "Windows 11 22000")]
+    [InlineData(19045, "Windows 10 19045")]
+    [InlineData(0, "Windows")]
+    public void Windows_label_from_the_build_number(int build, string expected) =>
+        Assert.Equal(expected, SystemMath.WindowsLabel(build));
+
+    [Fact]
+    public void Cpu_name_is_trimmed_and_collapsed()
+    {
+        Assert.Equal("Intel(R) Core(TM) i7-13700H", SystemMath.CleanCpuName("  Intel(R)   Core(TM)  i7-13700H  "));
+        Assert.Equal("", SystemMath.CleanCpuName(null));
+    }
+
+    [Fact]
+    public void Footer_joins_the_known_parts()
+    {
+        Assert.Equal("Intel CPU · Windows 11 26200 · Up 2 d 18 h",
+            SystemMath.Footer("Intel CPU", "Windows 11 26200", new TimeSpan(2, 18, 0, 0)));
+        Assert.Equal("Windows 11 26200 · Up 7 m", SystemMath.Footer("", "Windows 11 26200", TimeSpan.FromMinutes(7)));
+    }
+
+    [Fact]
+    public void Busiest_interface_is_the_one_with_most_traffic_and_an_address()
+    {
+        var picked = SystemMath.BusiestInterface(new[]
+        {
+            new InterfaceLoad("Ethernet", "10.0.0.5", 900),
+            new InterfaceLoad("Wi-Fi", "192.168.1.20", 5_000),
+            new InterfaceLoad("vEthernet", null, 99_999), // no IPv4: not a candidate
+        });
+        Assert.NotNull(picked);
+        Assert.Equal("Wi-Fi", picked!.Name);
+        Assert.Equal("192.168.1.20", picked.Ipv4);
+    }
+
+    [Fact]
+    public void Busiest_interface_ties_go_by_name_and_none_gives_null()
+    {
+        var picked = SystemMath.BusiestInterface(new[]
+        {
+            new InterfaceLoad("Wi-Fi", "192.168.1.20", 0),
+            new InterfaceLoad("Ethernet", "10.0.0.5", 0),
+        });
+        Assert.Equal("Ethernet", picked!.Name);
+        Assert.Null(SystemMath.BusiestInterface(new[] { new InterfaceLoad("Loopback", null, 5) }));
+        Assert.Null(SystemMath.BusiestInterface(Array.Empty<InterfaceLoad>()));
     }
 }
 
@@ -198,11 +405,4 @@ public class SystemFormatTests
     public void Percent_rounds_and_clamps(double fraction, string expected) =>
         Assert.Equal(expected, SystemMath.Percent(fraction));
 
-    [Theory]
-    [InlineData(true, false, "Charging")]
-    [InlineData(true, true, "Charging")]
-    [InlineData(false, true, "Plugged in")]
-    [InlineData(false, false, "On battery")]
-    public void Battery_status_text(bool charging, bool pluggedIn, string expected) =>
-        Assert.Equal(expected, SystemMath.BatteryStatusText(charging, pluggedIn));
 }
