@@ -24,6 +24,9 @@ public sealed class QuranSettings
 
     public bool Transliteration { get; set; }
 
+    /// <summary>While playing, the resting island widens and shows the current ayah word by word.</summary>
+    public bool ShowAyahOnIsland { get; set; } = true;
+
     public int ArabicSize
     {
         get => _arabicSize;

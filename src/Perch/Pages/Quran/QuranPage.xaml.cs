@@ -57,6 +57,11 @@ public partial class QuranPage : IslandPage
     private CancellationTokenSource? _loadCts;
     private DateTime _lastSaveUtc = DateTime.UtcNow;
 
+    private const double IslandStripWidth = 500;
+    private QuranPillStrip? _pillStrip;
+    private TextBlock? _pillRef;
+    private bool _stripPosted;
+
     public override string Id => "quran";
     public override string Title => "Quran";
     public override string Glyph => BookGlyph;
@@ -149,6 +154,14 @@ public partial class QuranPage : IslandPage
             _settings.ContinueNextSurah = ContinueToggle.IsChecked == true;
             SettingsChanged(reading: false);
         };
+        IslandAyahToggle.Click += (_, _) =>
+        {
+            _settings.ShowAyahOnIsland = IslandAyahToggle.IsChecked == true;
+            SettingsChanged(reading: false);
+            ApplyInterval();
+            RemovePill();
+            PostPill();
+        };
 
         // Reopen on the last surah, paused. The audio is only opened once the tab is first shown.
         if (QuranRules.HasSurah(_settings.LastSurah))
@@ -165,7 +178,7 @@ public partial class QuranPage : IslandPage
     public override void OnShown()
     {
         _visible = true;
-        _player.SetFast(true);
+        ApplyInterval();
         if (_restorePending)
         {
             _restorePending = false;
@@ -183,7 +196,7 @@ public partial class QuranPage : IslandPage
     {
         // Audio keeps playing; only the UI work stops and the timer drops to once a second.
         _visible = false;
-        _player.SetFast(false);
+        ApplyInterval();
         SaveNow();
     }
 
@@ -387,6 +400,7 @@ public partial class QuranPage : IslandPage
         var changed = index != _ayahIndex;
         _ayahIndex = index;
         if (changed) PostPill();
+        UpdateIslandStrip(track, index, ms);
         if (!_visible) return;
 
         if (changed) ScrollToCurrent(instant: false);
@@ -403,20 +417,57 @@ public partial class QuranPage : IslandPage
 
     // ---- resting pill -----------------------------------------------------------------------------
 
+    /// <summary>
+    /// 50 ms while the tab is visible (word highlight in the reading view); about 8 times a second while the
+    /// island shows the ayah strip; once a second otherwise. The timer only runs while audio plays.
+    /// </summary>
+    private void ApplyInterval() =>
+        _player.SetInterval(_visible ? TimeSpan.FromMilliseconds(50)
+            : _settings.ShowAyahOnIsland ? TimeSpan.FromMilliseconds(120)
+            : TimeSpan.FromSeconds(1));
+
+    /// <summary>
+    /// The resting island while playing. With "Show the ayah on the island" it widens into a strip that follows
+    /// the recitation word by word; otherwise it is a compact "Ya-Sin · 12/83" pill. The strip is posted once and
+    /// then updated in place, so word and ayah changes do not re-post the activity.
+    /// </summary>
     private void PostPill()
     {
         var track = _track;
         if (track == null || _ayahIndex < 0 || !_player.IsPlaying) return;
-
         var number = track.Audio.Ayahs[_ayahIndex].Number;
-        var leading = new TextBlock
+
+        if (_settings.ShowAyahOnIsland)
         {
-            Text = BookGlyph,
-            FontFamily = (FontFamily)Application.Current.FindResource("IconFont"),
-            FontSize = 14,
-            VerticalAlignment = VerticalAlignment.Center,
-        };
-        leading.SetResourceReference(TextBlock.ForegroundProperty, "IslandAccent");
+            if (_pillRef != null) _pillRef.Text = $"{track.Surah.Id}:{number}";
+            if (_stripPosted && Ctx.Activities.Contains(PillKey)) return;
+
+            _pillStrip ??= new QuranPillStrip();
+            _pillRef = new TextBlock
+            {
+                Text = $"{track.Surah.Id}:{number}",
+                FontSize = 10.5,
+                FontWeight = FontWeights.SemiBold,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(6, 1, 0, 0),
+            };
+            _pillRef.SetResourceReference(TextBlock.ForegroundProperty, "IslandSubtle");
+            var leading = new StackPanel { Orientation = Orientation.Horizontal };
+            leading.Children.Add(PillGlyph());
+            leading.Children.Add(_pillRef);
+            Ctx.Activities.Post(new PillActivity
+            {
+                Key = PillKey,
+                Priority = PillPriority,
+                Width = IslandStripWidth,
+                Leading = leading,
+                Center = _pillStrip,
+                Trailing = new EqualizerBars { IsPlaying = true },
+            });
+            _stripPosted = true;
+            UpdateIslandStrip(track, _ayahIndex, _player.PositionMs);
+            return;
+        }
 
         var center = new TextBlock
         {
@@ -433,13 +484,40 @@ public partial class QuranPage : IslandPage
             Key = PillKey,
             Priority = PillPriority,
             Width = 210,
-            Leading = leading,
+            Leading = PillGlyph(),
             Center = center,
             Trailing = new EqualizerBars { IsPlaying = true },
         });
+        _stripPosted = false;
     }
 
-    private void RemovePill() => Ctx.Activities.Remove(PillKey);
+    private static TextBlock PillGlyph()
+    {
+        var glyph = new TextBlock
+        {
+            Text = BookGlyph,
+            FontFamily = (FontFamily)Application.Current.FindResource("IconFont"),
+            FontSize = 14,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        glyph.SetResourceReference(TextBlock.ForegroundProperty, "IslandAccent");
+        return glyph;
+    }
+
+    /// <summary>Moves the island strip to the ayah and word at this position (only while it is showing).</summary>
+    private void UpdateIslandStrip(QuranTrack track, int index, long ms)
+    {
+        if (!_stripPosted || _pillStrip == null || index < 0 || index >= track.Audio.Ayahs.Count) return;
+        var number = track.Audio.Ayahs[index].Number;
+        var text = track.Texts.FirstOrDefault(t => t.Number == number);
+        _pillStrip.Show(text, WordKey(track, index, ms));
+    }
+
+    private void RemovePill()
+    {
+        Ctx.Activities.Remove(PillKey);
+        _stripPosted = false;
+    }
 
     // ---- persistence ------------------------------------------------------------------------------
 
@@ -712,6 +790,7 @@ public partial class QuranPage : IslandPage
         ArabicSizeText.Text = _settings.ArabicSize.ToString(CultureInfo.InvariantCulture);
         TransliterationToggle.IsChecked = _settings.Transliteration;
         ContinueToggle.IsChecked = _settings.ContinueNextSurah;
+        IslandAyahToggle.IsChecked = _settings.ShowAyahOnIsland;
     }
 
     private void UpdatePlayButton()

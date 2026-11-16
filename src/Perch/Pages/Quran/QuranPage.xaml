@@ -201,6 +201,8 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="8" />
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="8" />
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
                 <Border Style="{StaticResource PerchCard}" Padding="10,8">
@@ -238,6 +240,10 @@
                 </Border>
                 <Border Grid.Row="4" Grid.Column="2" Style="{StaticResource PerchCard}" Padding="10,8">
                     <CheckBox x:Name="ContinueToggle" Style="{StaticResource PerchToggle}" Content="Continue to next surah" VerticalAlignment="Center" />
+                </Border>
+                <Border Grid.Row="6" Grid.ColumnSpan="3" Style="{StaticResource PerchCard}" Padding="10,8">
+                    <CheckBox x:Name="IslandAyahToggle" Style="{StaticResource PerchToggle}"
+                              Content="Show the ayah on the island while it plays" VerticalAlignment="Center" />
                 </Border>
             </Grid>
         </Grid>

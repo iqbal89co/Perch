@@ -61,8 +61,8 @@ public sealed class QuranPlayer
         _timer.Tick += (_, _) => Tick();
     }
 
-    public void SetFast(bool fast) =>
-        _timer.Interval = fast ? TimeSpan.FromMilliseconds(50) : TimeSpan.FromSeconds(1);
+    /// <summary>How often the position is read while playing (the page picks the rate).</summary>
+    public void SetInterval(TimeSpan interval) => _timer.Interval = interval;
 
     /// <summary>Loads a new file. It starts at startMs and plays only when play is true.</summary>
     public void Open(string url, long startMs, bool play)
