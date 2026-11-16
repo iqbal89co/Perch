@@ -41,6 +41,7 @@
   <ItemGroup>
     <Resource Include="Assets\perch.ico" />
     <Resource Include="Assets\perch.png" />
+    <Resource Include="Assets\Fonts\AmiriQuran-Regular.ttf" />
   </ItemGroup>
 
   <ItemGroup>

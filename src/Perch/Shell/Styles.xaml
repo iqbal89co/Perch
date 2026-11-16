@@ -19,6 +19,8 @@
     <FontFamily x:Key="UiFont">Segoe UI Variable Text, Segoe UI</FontFamily>
     <FontFamily x:Key="DisplayFont">Segoe UI Variable Display, Segoe UI</FontFamily>
     <FontFamily x:Key="IconFont">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
+    <!-- Quran text: Amiri Quran (SIL Open Font License, Assets/Fonts/AmiriQuran-OFL.txt), embedded in the app. -->
+    <FontFamily x:Key="QuranFont">pack://application:,,,/Perch;component/Assets/Fonts/#Amiri Quran</FontFamily>
 
     <Style x:Key="PerchTitle" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{StaticResource DisplayFont}" />

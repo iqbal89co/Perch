@@ -141,8 +141,11 @@ public partial class PrayerPage : IslandPage
                 break;
         }
 
-        if (_settings.PauseMusic && ctx.Media.Current?.IsPlaying == true)
-            _ = ctx.Media.PlayPauseAsync();
+        if (_settings.PauseMusic)
+        {
+            if (ctx.Media.Current?.IsPlaying == true) _ = ctx.Media.PlayPauseAsync();
+            ctx.RequestPauseAudio();
+        }
     }
 
     private void PlayChime()

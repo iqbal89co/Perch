@@ -22,6 +22,15 @@ public sealed class IslandContext
     /// <summary>Raised when something asks the island to open on a page (page id).</summary>
     public event Action<string>? NavigateRequested;
 
+    /// <summary>
+    /// Raised when something wants Perch's own audio to stop for a moment (prayer time, for example).
+    /// Players inside Perch (the Quran player) pause when they get it. Music in other apps is paused through
+    /// <see cref="Media"/> instead.
+    /// </summary>
+    public event Action? PauseAudioRequested;
+
+    public void RequestPauseAudio() => PauseAudioRequested?.Invoke();
+
     /// <summary>True while the island is open.</summary>
     public bool IsExpanded { get; internal set; }
 
