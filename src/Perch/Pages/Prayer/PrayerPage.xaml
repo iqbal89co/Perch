@@ -85,20 +85,20 @@
 
             <!-- Facts strip: night, day length, qibla, next Islamic date -->
             <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,10,0,0">
-                <StackPanel Orientation="Horizontal" Margin="0,0,18,0">
+                <StackPanel Orientation="Horizontal" Margin="0,0,12,0">
                     <TextBlock Style="{StaticResource PerchGlyph}" Text="&#xE708;" FontSize="13" Margin="0,0,6,0" />
                     <TextBlock x:Name="NightText" Style="{StaticResource PerchCaption}" FontSize="11.5" VerticalAlignment="Center" />
                 </StackPanel>
-                <StackPanel Orientation="Horizontal" Margin="0,0,18,0">
+                <StackPanel Orientation="Horizontal" Margin="0,0,12,0">
                     <TextBlock Style="{StaticResource PerchGlyph}" Text="&#xE706;" FontSize="13" Margin="0,0,6,0" />
                     <TextBlock x:Name="DayLengthText" Style="{StaticResource PerchCaption}" FontSize="11.5" VerticalAlignment="Center" />
                 </StackPanel>
-                <StackPanel Orientation="Horizontal" Margin="0,0,18,0">
+                <StackPanel Orientation="Horizontal" Margin="0,0,12,0">
                     <TextBlock Style="{StaticResource PerchGlyph}" Text="&#xE787;" FontSize="13" Margin="0,0,6,0" />
                     <TextBlock x:Name="IslamicText" Style="{StaticResource PerchCaption}" FontSize="11.5" VerticalAlignment="Center" />
                 </StackPanel>
                 <StackPanel x:Name="QiblaPanel" Orientation="Horizontal">
-                    <Viewbox Width="36" Height="36" Margin="0,0,6,0" ToolTip="Direction of the Kaaba from here">
+                    <Viewbox Width="32" Height="32" Margin="0,0,6,0" ToolTip="Direction of the Kaaba from here">
                         <Grid Width="56" Height="56">
                             <Ellipse Fill="{DynamicResource IslandCard}" Stroke="{DynamicResource IslandStroke}" StrokeThickness="1" />
                             <Grid x:Name="QiblaNeedle" RenderTransformOrigin="0.5,0.5">

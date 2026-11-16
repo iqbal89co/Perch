@@ -8,6 +8,15 @@ Perch sits at the top centre of your screen as a small pill. While it rests it s
 matters right now: the song that's playing, your focus timer, the volume as you change it, the charger
 going in. Point at it and it springs open into a panel with tabs.
 
+<p align="center">
+  <img src="docs/screens/media-tide.png" width="49%" alt="Music tab in the Tide theme">
+  <img src="docs/screens/media-apricot.png" width="49%" alt="Music tab in the Apricot theme">
+</p>
+<p align="center">
+  <img src="docs/screens/prayer-tide.png" width="49%" alt="Prayer tab in the Tide theme">
+  <img src="docs/screens/ai-apricot.png" width="49%" alt="AI usage tab in the Apricot theme">
+</p>
+
 ## What it does
 
 | Tab | What you get |
@@ -17,14 +26,16 @@ going in. Point at it and it springs open into a panel with tabs.
 | **Shelf** | Drag files onto the island to keep them here; drag them out again into any app. Text drops become notes. |
 | **Tasks** | A small to-do list. Enter to add, click to tick, double-click to edit. |
 | **Focus** | A Pomodoro timer with short and long breaks. It keeps counting on the resting island. |
-| **AI** | Three rows from Claude Code's own logs on this PC: **Usage 5h** (the current 5-hour window), **Usage Weekly** (the last 7 days) and **Usage Fable** (the last 7 days of Fable models). Optional budget per row for a bar, and "tell me before I run out" notices. |
-| **Prayer** | Today's prayer times for your city, computed on your PC (Kemenag, MWL, ISNA, Umm al-Qura and more), the Hijri date, a countdown on the island before each prayer, a gentle chime and the qibla. |
-| **System** | CPU, memory, network, disks, battery and the busiest apps, live while the tab is open. |
+| **AI** | Three tiles from Claude Code's own logs on this PC: the current **5-hour** window, the last 7 days (**Weekly**) and the last 7 days of **Fable** models. Set a budget to see a percentage and a bar, and get a notice before you run out. |
+| **Prayer** | Imsak, Fajr, Sunrise, Dhuha, Dhuhr, Asr, Maghrib and Isha for your city, computed on your PC (Kemenag, MWL, ISNA, Umm al-Qura and more). The next prayer with a countdown and progress, the Hijri date, midnight and the last third of the night, day length, the next Islamic date, and the qibla with the distance to the Kaaba. A countdown on the island before each prayer and a gentle chime. |
+| **System** | CPU (with clock speed), GPU and video memory, memory, battery with time left, network speed with totals and IP, disk space and activity, and the busiest apps, each with a live history graph. Sampled only while the tab is open. |
 
 **On the resting island:** the clock, now playing with a little equaliser, the focus countdown, a volume
 bar when you press the volume keys, and charging / low-battery notices.
 
-**Looks:** four themes (Midnight, Daylight, Smoke, Aurora), six accent colours, and two shapes: *Docked*
+**Looks:** two glass themes, **Tide** (deep navy into cyan) and **Apricot** (warm light orange), with frosted
+cards over a softly glowing backdrop, plus plain **Midnight** and **Daylight**. The accent follows the theme or
+one of seven colours. Two shapes: *Docked*
 (hangs from the top edge with soft shoulders) or *Floating* (a capsule just below the edge). Motion is a
 real spring, stepped with the display's frame clock.
 
