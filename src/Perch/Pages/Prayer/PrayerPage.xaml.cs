@@ -323,11 +323,10 @@ public partial class PrayerPage : IslandPage
             var value = new TextBlock
             {
                 Text = time is { } v ? PrayerText.Clock(v, use24h) : "—",
-                Style = (Style)FindResource("PerchBody"),
-                FontSize = 15,
+                Style = (Style)FindResource("PerchTitle"),
+                FontSize = 16,
                 FontWeight = isCurrent ? FontWeights.Bold : FontWeights.SemiBold,
             };
-            Typography.SetNumeralAlignment(value, FontNumeralAlignment.Tabular);
             if (isPassed)
             {
                 name.SetResourceReference(TextBlock.ForegroundProperty, "IslandSubtle");
