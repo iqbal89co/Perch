@@ -16,13 +16,13 @@
         </DockPanel>
 
         <Grid Grid.Row="1" Margin="0,4,0,0">
-            <!-- The three usage rows: 5-hour window, last 7 days, last 7 days of Fable -->
+            <!-- Three tiles side by side: the 5-hour window, the last 7 days, the last 7 days of Fable -->
             <Grid x:Name="UsageList">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="*" />
-                    <RowDefinition Height="*" />
-                    <RowDefinition Height="*" />
-                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
             </Grid>
 
             <!-- No Claude Code logs on this PC -->

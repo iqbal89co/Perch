@@ -231,20 +231,12 @@ public partial class AiUsagePage : IslandPage
         if (claude != null)
         {
             var block = claude.Current;
-            AddRow(0, "Usage 5h", block?.ActiveTokens ?? 0, _settings.ClaudeBlockBudgetTokens,
-                block != null
-                    ? $"resets in {AiFormat.Remaining(block.EndUtc - DateTime.UtcNow)} · {AiFormat.Plural(block.Messages, "message")}"
-                    : "No activity in the last 5 hours",
+            AddTile(0, "5 hours", block?.ActiveTokens ?? 0, _settings.ClaudeBlockBudgetTokens,
+                block != null ? $"resets in {AiFormat.Remaining(block.EndUtc - DateTime.UtcNow)}" : "idle",
                 block != null ? Breakdown(block.ModelTokens) : null);
-
-            AddRow(1, "Usage Weekly", claude.Week.Tokens, _settings.WeeklyBudgetTokens,
-                $"last 7 days · {AiFormat.Plural(claude.Week.Messages, "message")}",
+            AddTile(1, "Weekly", claude.Week.Tokens, _settings.WeeklyBudgetTokens, "last 7 days",
                 Breakdown(claude.Week.ModelTokens));
-
-            AddRow(2, "Usage Fable", claude.FableWeek.Tokens, _settings.FableBudgetTokens,
-                claude.FableWeek.Messages > 0
-                    ? $"Fable models, last 7 days · {AiFormat.Plural(claude.FableWeek.Messages, "message")}"
-                    : "No Fable use in the last 7 days",
+            AddTile(2, "Fable", claude.FableWeek.Tokens, _settings.FableBudgetTokens, "last 7 days",
                 Breakdown(claude.FableWeek.ModelTokens));
         }
 
@@ -254,72 +246,52 @@ public partial class AiUsagePage : IslandPage
     }
 
     /// <summary>
-    /// One row: the name and a short caption on the left; on the right the percentage of the budget (or the
-    /// token count when there is no budget); a bar along the bottom when there is a budget.
+    /// One tile: a small label, one big number (the percentage of the budget, or the token count when there is
+    /// no budget), a bar when there is a budget, and a short note. Hover shows tokens per model.
     /// </summary>
-    private void AddRow(int index, string name, long tokens, long? budget, string caption, string? tooltip)
+    private void AddTile(int index, string name, long tokens, long? budget, string note, string? tooltip)
     {
         var percent = AiWarnings.Percent(tokens, budget);
         var danger = percent >= NearPercent;
+        var stack = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
 
-        var grid = new Grid { VerticalAlignment = VerticalAlignment.Center };
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-
-        var title = new TextBlock
+        var label = new TextBlock
         {
-            Text = name,
-            Style = (Style)FindResource("PerchTitle"),
-            FontSize = 14,
+            Text = name.ToUpperInvariant(),
+            Style = (Style)FindResource("PerchCaption"),
+            FontSize = 11,
             FontWeight = FontWeights.SemiBold,
-            VerticalAlignment = VerticalAlignment.Bottom,
         };
-        grid.Children.Add(title);
+        label.SetResourceReference(TextBlock.ForegroundProperty, "IslandAccent");
+        stack.Children.Add(label);
 
         var value = new TextBlock
         {
             Text = percent is { } p ? $"{Math.Round(p):0}%" : AiFormat.Tokens(tokens),
             Style = (Style)FindResource("PerchTitle"),
-            FontSize = 20,
+            FontSize = 34,
             FontWeight = FontWeights.Bold,
-            HorizontalAlignment = HorizontalAlignment.Right,
-            VerticalAlignment = VerticalAlignment.Bottom,
+            Margin = new Thickness(0, 2, 0, 0),
         };
-        if (percent != null) value.SetResourceReference(TextBlock.ForegroundProperty, danger ? "IslandDanger" : "IslandAccent");
-        Grid.SetColumn(value, 1);
-        grid.Children.Add(value);
+        if (danger) value.SetResourceReference(TextBlock.ForegroundProperty, "IslandDanger");
+        stack.Children.Add(value);
 
-        var left = Caption(caption);
-        Grid.SetRow(left, 1);
-        grid.Children.Add(left);
+        stack.Children.Add(Caption(budget is { } b && b > 0 ? $"{AiFormat.Tokens(tokens)} of {AiFormat.Tokens(b)} tokens" : "tokens"));
+        if (percent is { } fraction) stack.Children.Add(Bar(fraction / 100, danger, new Thickness(0, 8, 0, 0)));
 
-        var right = Caption(budget is { } b && b > 0 ? $"{AiFormat.Tokens(tokens)} of {AiFormat.Tokens(b)}" : "tokens");
-        right.HorizontalAlignment = HorizontalAlignment.Right;
-        right.Margin = new Thickness(12, 0, 0, 0);
-        Grid.SetRow(right, 1);
-        Grid.SetColumn(right, 1);
-        grid.Children.Add(right);
-
-        if (percent is { } fraction)
-        {
-            var bar = Bar(fraction / 100, danger, new Thickness(0, 7, 0, 0));
-            Grid.SetRow(bar, 2);
-            Grid.SetColumnSpan(bar, 2);
-            grid.Children.Add(bar);
-        }
+        var foot = Caption(note);
+        foot.Margin = new Thickness(0, 10, 0, 0);
+        stack.Children.Add(foot);
 
         var card = new Border
         {
             Style = (Style)FindResource("PerchCard"),
-            Padding = new Thickness(14, 8, 14, 8),
-            Margin = new Thickness(0, index == 0 ? 0 : 3, 0, index == 2 ? 0 : 3),
-            Child = grid,
+            Padding = new Thickness(16, 12, 16, 12),
+            Margin = new Thickness(index == 0 ? 0 : 4, 0, index == 2 ? 0 : 4, 0),
+            Child = stack,
             ToolTip = tooltip,
         };
-        Grid.SetRow(card, index);
+        Grid.SetColumn(card, index);
         UsageList.Children.Add(card);
     }
 
