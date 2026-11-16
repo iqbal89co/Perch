@@ -210,6 +210,210 @@ public class PrayerCalculatorTests
     }
 }
 
+public class PrayerDayViewTests
+{
+    private static readonly TimeZoneInfo Jakarta = TimeZoneInfo.FindSystemTimeZoneById("Asia/Jakarta");
+    private static readonly DateOnly Day = new(2026, 11, 16);
+
+    private static PrayerDay JakartaDay(DateOnly? date = null) =>
+        PrayerCalculator.Calculate(date ?? Day, -6.2886, 106.7179, 0, Jakarta, PrayerMethods.Kemenag);
+
+    private static DateTimeOffset At(int hour, int minute) =>
+        new(Day.Year, Day.Month, Day.Day, hour, minute, 0, TimeSpan.FromHours(7));
+
+    [Fact]
+    public void Imsak_is_exactly_ten_minutes_before_fajr()
+    {
+        var day = JakartaDay();
+        Assert.Equal(day.Fajr!.Value.AddMinutes(-10), PrayerCalculator.Imsak(day));
+        Assert.Null(PrayerCalculator.Imsak(new PrayerDay(Day, null, null, null, null, null, null)));
+    }
+
+    [Fact]
+    public void Dhuha_is_about_eighteen_minutes_after_sunrise_in_jakarta()
+    {
+        var day = JakartaDay();
+        Assert.NotNull(day.Dhuha);
+        // Sunrise about 05:25 on this day; the sun reaches +4.5 degrees about 05:43 to 05:50.
+        Assert.InRange(day.Dhuha!.Value.TimeOfDay.TotalMinutes, 5 * 60 + 40, 5 * 60 + 55);
+        Assert.True(day.Dhuha > day.Sunrise);
+        Assert.True(day.Dhuha < day.Dhuhr);
+    }
+
+    [Fact]
+    public void Dhuha_is_not_a_prayer_for_reminders()
+    {
+        // Next() only walks the five prayers: just before and just after Dhuha, the next one is Dhuhr.
+        var day = JakartaDay();
+        Assert.Equal("Dhuhr", PrayerCalculator.Next(day, day.Dhuha!.Value.AddMinutes(-1))!.Value.Name);
+        Assert.Equal("Dhuhr", PrayerCalculator.Next(day, day.Dhuha!.Value.AddMinutes(1))!.Value.Name);
+    }
+
+    [Fact]
+    public void Night_splits_maghrib_to_fajr_in_half_and_two_thirds()
+    {
+        // Maghrib 18:00, tomorrow's Fajr 04:00: ten hours of night.
+        var night = PrayerCalculator.Night(At(18, 0), At(18, 0).AddHours(10));
+        Assert.NotNull(night);
+        Assert.Equal(At(23, 0), night!.Value.Midnight);
+        Assert.Equal(At(18, 0).AddMinutes(400), night.Value.LastThird); // 18:00 + 6 h 40 min = 00:40 next day
+        Assert.Null(PrayerCalculator.Night(null, At(4, 0)));
+        Assert.Null(PrayerCalculator.Night(At(18, 0), null));
+    }
+
+    [Fact]
+    public void Night_times_for_jakarta_are_plausible()
+    {
+        var today = JakartaDay();
+        var tomorrow = JakartaDay(Day.AddDays(1));
+        var night = PrayerCalculator.Night(today.Maghrib, tomorrow.Fajr);
+        Assert.NotNull(night);
+        Assert.True(night!.Value.Midnight > today.Isha);
+        Assert.True(night.Value.Midnight < tomorrow.Fajr);
+        Assert.True(night.Value.LastThird > night.Value.Midnight);
+        Assert.True(night.Value.LastThird < tomorrow.Fajr);
+    }
+
+    [Fact]
+    public void Day_length_runs_from_sunrise_to_maghrib()
+    {
+        Assert.Equal(TimeSpan.FromMinutes(12 * 60 + 24), PrayerCalculator.DayLength(At(5, 25), At(17, 49)));
+    }
+
+    [Fact]
+    public void Distance_to_the_kaaba_from_jakarta_and_london()
+    {
+        Assert.InRange(PrayerCalculator.DistanceToKaabaKm(-6.2088, 106.8456), 7850, 7930);
+        Assert.InRange(PrayerCalculator.DistanceToKaabaKm(51.5074, -0.1278), 4700, 4800);
+        Assert.InRange(PrayerCalculator.DistanceToKaabaKm(21.4225, 39.8262), 0, 0.5);
+    }
+
+    [Theory]
+    [InlineData(0, "N")]
+    [InlineData(11.2, "N")]
+    [InlineData(11.3, "NNE")]
+    [InlineData(45, "NE")]
+    [InlineData(90, "E")]
+    [InlineData(180, "S")]
+    [InlineData(295, "WNW")]
+    [InlineData(348.74, "NNW")]
+    [InlineData(348.8, "N")]
+    [InlineData(359.9, "N")]
+    [InlineData(-65, "WNW")]
+    public void Compass_has_sixteen_points(double bearing, string expected)
+    {
+        Assert.Equal(expected, PrayerCalculator.Compass16(bearing));
+    }
+
+    [Fact]
+    public void Qibla_text_shows_bearing_direction_and_distance()
+    {
+        var bearing = PrayerCalculator.QiblaBearing(-6.2088, 106.8456);
+        var distance = PrayerCalculator.DistanceToKaabaKm(-6.2088, 106.8456);
+        var text = PrayerText.Qibla(bearing, distance);
+        Assert.Matches(@"^29[45]° WNW · 7,\d{3} km$", text);
+    }
+
+    [Fact]
+    public void Previous_prayer_is_the_last_one_passed_and_looks_back_to_yesterday()
+    {
+        var today = JakartaDay();
+        var yesterday = JakartaDay(Day.AddDays(-1));
+
+        var afterAsr = PrayerCalculator.PreviousPrayer(today, today.Asr!.Value.AddMinutes(65), yesterday);
+        Assert.Equal("Asr", afterAsr!.Value.Name);
+        Assert.Equal(today.Asr, afterAsr.Value.Time);
+
+        // Sunrise is not a prayer: after sunrise and before Dhuhr the previous one is Fajr.
+        var afterSunrise = PrayerCalculator.PreviousPrayer(today, today.Sunrise!.Value.AddMinutes(5), yesterday);
+        Assert.Equal("Fajr", afterSunrise!.Value.Name);
+
+        // Before today's Fajr the previous prayer is yesterday's Isha.
+        var beforeFajr = PrayerCalculator.PreviousPrayer(today, today.Fajr!.Value.AddMinutes(-30), yesterday);
+        Assert.Equal("Isha", beforeFajr!.Value.Name);
+        Assert.Equal(yesterday.Isha, beforeFajr.Value.Time);
+        Assert.Null(PrayerCalculator.PreviousPrayer(today, today.Fajr!.Value.AddMinutes(-30)));
+    }
+
+    [Fact]
+    public void Progress_is_the_fraction_between_two_prayers_and_clamped()
+    {
+        var previous = At(14, 59);
+        var next = At(17, 49);
+        Assert.Equal(0.5, PrayerCalculator.PrayerProgress(previous, next, previous + (next - previous) / 2), 6);
+        Assert.Equal(0.0, PrayerCalculator.PrayerProgress(previous, next, previous.AddHours(-1)));
+        Assert.Equal(1.0, PrayerCalculator.PrayerProgress(previous, next, next.AddHours(1)));
+        Assert.Equal(0.0, PrayerCalculator.PrayerProgress(next, next, next));
+    }
+
+    [Fact]
+    public void Next_islamic_date_is_upcoming_and_one_of_the_listed_dates()
+    {
+        var names = new[] { "Islamic New Year", "Ashura", "Mawlid", "Isra Mi'raj", "Ramadan", "Eid al-Fitr", "Eid al-Adha" };
+        var today = new DateOnly(2026, 11, 16);
+        var next = PrayerCalculator.NextIslamicEvent(today);
+
+        Assert.NotNull(next);
+        Assert.Contains(next!.Name, names);
+        Assert.True(next.Date >= today);
+        Assert.Equal(next.Date.DayNumber - today.DayNumber, next.DaysUntil);
+        // Every listed date comes at least once a year, so the nearest one is within a year.
+        Assert.InRange(next.DaysUntil, 0, 366);
+    }
+
+    [Fact]
+    public void Next_islamic_date_never_throws_across_a_year_and_wraps_at_year_end()
+    {
+        var start = new DateOnly(2026, 1, 1);
+        for (var i = 0; i < 400; i++)
+        {
+            var next = PrayerCalculator.NextIslamicEvent(start.AddDays(i));
+            Assert.NotNull(next);
+            Assert.InRange(next!.DaysUntil, 0, 366);
+        }
+    }
+
+    [Fact]
+    public void Next_islamic_date_is_today_on_the_day_itself_and_null_when_unrepresentable()
+    {
+        var calendar = new System.Globalization.UmAlQuraCalendar();
+        var ramadan = DateOnly.FromDateTime(calendar.ToDateTime(1448, 9, 1, 0, 0, 0, 0));
+        var onRamadan = PrayerCalculator.NextIslamicEvent(ramadan);
+        Assert.Equal("Ramadan", onRamadan!.Name);
+        Assert.Equal(0, onRamadan.DaysUntil);
+
+        // Before the calendar's supported range the lookup must not throw.
+        Assert.Null(PrayerCalculator.NextIslamicEvent(new DateOnly(1800, 1, 1)));
+    }
+
+    [Theory]
+    [InlineData(0, "Ramadan today")]
+    [InlineData(1, "Ramadan tomorrow")]
+    [InlineData(103, "Ramadan in 103 days")]
+    public void Islamic_caption_words_today_and_tomorrow(int days, string expected)
+    {
+        Assert.Equal(expected, PrayerText.IslamicEventCaption(new IslamicEvent("Ramadan", Day, days)));
+    }
+
+    [Theory]
+    [InlineData(65, "1 h 05 m")]
+    [InlineData(42, "42 min")]
+    [InlineData(0, "0 min")]
+    [InlineData(-5, "0 min")]
+    public void Elapsed_text(int minutes, string expected)
+    {
+        Assert.Equal(expected, PrayerText.Elapsed(TimeSpan.FromMinutes(minutes)));
+    }
+
+    [Fact]
+    public void Method_short_names_for_the_header()
+    {
+        Assert.Equal("Kemenag", PrayerText.MethodShortName("kemenag"));
+        Assert.Equal("MWL", PrayerText.MethodShortName("mwl"));
+        Assert.Equal("Kemenag", PrayerText.MethodShortName(null));
+    }
+}
+
 public class PrayerTextTests
 {
     [Theory]

@@ -26,6 +26,42 @@ public static class PrayerText
         return $"in {seconds / 60}:{seconds % 60:00}";
     }
 
+    /// <summary>A duration as "1 h 05 m" from an hour up, "42 min" below that. Negative values read as zero.</summary>
+    public static string Elapsed(TimeSpan span)
+    {
+        if (span < TimeSpan.Zero) span = TimeSpan.Zero;
+        var minutes = (long)Math.Round(span.TotalMinutes, MidpointRounding.ToZero);
+        return minutes >= 60 ? $"{minutes / 60} h {minutes % 60:00} m" : $"{minutes} min";
+    }
+
+    /// <summary>"Ramadan in 103 days", "Eid al-Fitr tomorrow", "Ashura today".</summary>
+    public static string IslamicEventCaption(IslamicEvent e) => e.DaysUntil switch
+    {
+        0 => $"{e.Name} today",
+        1 => $"{e.Name} tomorrow",
+        _ => $"{e.Name} in {e.DaysUntil} days",
+    };
+
+    /// <summary>Qibla bearing and distance, e.g. "295° WNW · 7,890 km".</summary>
+    public static string Qibla(double bearing, double distanceKm) =>
+        $"{Math.Round(bearing):0}° {PrayerCalculator.Compass16(bearing)} · {distanceKm.ToString("N0", CultureInfo.InvariantCulture)} km";
+
+    /// <summary>The method's short name for the header caption, e.g. "Kemenag", "MWL".</summary>
+    public static string MethodShortName(string? id) => PrayerMethods.Find(id).Id switch
+    {
+        "kemenag" => "Kemenag",
+        "mwl" => "MWL",
+        "isna" => "ISNA",
+        "egypt" => "Egypt",
+        "ummalqura" => "Umm al-Qura",
+        "karachi" => "Karachi",
+        "singapore" => "MUIS",
+        "turkey" => "Diyanet",
+        "gulf" => "Gulf",
+        "tehran" => "Tehran",
+        var other => other,
+    };
+
     /// <summary>Hijri date in English transliteration, e.g. "23 Jumada I 1448".</summary>
     public static string Hijri(DateOnly date)
     {
