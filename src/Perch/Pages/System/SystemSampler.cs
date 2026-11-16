@@ -89,6 +89,7 @@ internal sealed class SystemSampler : IDisposable
             : new DiskIoReading(null, null);
 
         var network = ReadNetwork(now, dt, rateOk, out var down, out var up);
+        _prevAt = now; // advances the baseline for every read, including ones too close to give rates
 
         return new SystemReading(
             cpu,
