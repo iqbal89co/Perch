@@ -3,8 +3,8 @@ using System.Diagnostics;
 namespace Perch.Pages.SystemMonitor;
 
 /// <summary>
-/// Top processes by CPU. Called from a background task only, one call at a time (the page guards this).
-/// The first call only records a baseline and returns nothing.
+/// Top processes by CPU, grouped by name. Called from a background task only, one call at a time (the page guards this).
+/// The first call only records a baseline and returns nothing. The baseline is kept between page openings.
 /// </summary>
 internal sealed class ProcessSampler
 {
@@ -29,7 +29,7 @@ internal sealed class ProcessSampler
         }
 
         var next = new Dictionary<int, TimeSpan>();
-        var byName = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+        var byName = new Dictionary<string, (double Fraction, long Memory)>(StringComparer.OrdinalIgnoreCase);
         try
         {
             foreach (var p in processes)
@@ -39,9 +39,13 @@ internal sealed class ProcessSampler
                     if (p.Id == 0) continue; // System Idle Process
                     var total = p.TotalProcessorTime;
                     next[p.Id] = total;
-                    if (!hasPrev || !_prev.TryGetValue(p.Id, out var before)) continue;
                     var name = p.ProcessName;
-                    byName[name] = byName.GetValueOrDefault(name) + SystemMath.ProcessPercent(before, total, elapsed, _cores);
+                    var (fraction, memory) = byName.GetValueOrDefault(name);
+                    if (hasPrev && _prev.TryGetValue(p.Id, out var before))
+                    {
+                        fraction += SystemMath.ProcessPercent(before, total, elapsed, _cores);
+                    }
+                    byName[name] = (fraction, memory + p.WorkingSet64);
                 }
                 catch (Exception)
                 {
@@ -56,6 +60,8 @@ internal sealed class ProcessSampler
 
         _prev = next;
         _prevAt = now;
-        return hasPrev ? SystemMath.TopProcesses(byName, count) : Array.Empty<ProcessUsage>();
+        if (!hasPrev) return Array.Empty<ProcessUsage>();
+        return SystemMath.TopProcesses(
+            byName.Select(kv => new ProcessUsage(kv.Key, kv.Value.Fraction, kv.Value.Memory)), count);
     }
 }
