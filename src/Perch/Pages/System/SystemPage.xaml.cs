@@ -37,18 +37,15 @@ public partial class SystemPage : IslandPage
 
     public override string Id => "system";
     public override string Title => "System";
-    public override string Glyph => ""; // Segoe MDL2 "Processing"
+    public override string Glyph => ""; // Segoe MDL2 "Processing"
     public override int Order => 60;
 
     public SystemPage()
     {
         InitializeComponent();
         _timer.Tick += (_, _) => OnTick();
-        Unloaded += (_, _) =>
-        {
-            _sampler.Dispose();
-            _gpu.Dispose();
-        };
+        // The page lives for the whole session and is unloaded on every tab switch, so the PDH queries are
+        // kept open (sampled only while shown) and released when the process exits.
         DownText.Text = "↓ —";
         UpText.Text = "↑ —";
         // Take a baseline now so the first live read after showing the tab already has deltas.

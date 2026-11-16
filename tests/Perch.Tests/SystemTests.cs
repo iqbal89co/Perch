@@ -295,7 +295,7 @@ public class DeviceTextTests
     [Fact]
     public void Network_totals_read_received_and_sent()
     {
-        Assert.Equal("Since start ↓ 1.2 GB · ↑ 300 MB",
+        Assert.Equal("Total ↓ 1.2 GB · ↑ 300 MB",
             SystemMath.NetworkTotals((long)(1.2 * GiB), 300L * 1024 * 1024));
     }
 

@@ -86,9 +86,9 @@ public static class SystemMath
     public static string DiskActivity(double? readBytesPerSec, double? writeBytesPerSec) =>
         $"R {Rate(readBytesPerSec)}{Dot}W {Rate(writeBytesPerSec)}";
 
-    /// <summary>"Since start ↓ 1.2 GB · ↑ 300 MB"</summary>
+    /// <summary>"Total ↓ 1.2 GB · ↑ 300 MB"</summary>
     public static string NetworkTotals(long received, long sent) =>
-        $"Since start ↓ {Format.Bytes(Math.Max(0, received))} · ↑ {Format.Bytes(Math.Max(0, sent))}";
+        $"Total ↓ {Format.Bytes(Math.Max(0, received))} · ↑ {Format.Bytes(Math.Max(0, sent))}";
 
     /// <summary>"Windows 11 26200" from the build number (Windows 11 starts at 22000).</summary>
     public static string WindowsLabel(int build)
