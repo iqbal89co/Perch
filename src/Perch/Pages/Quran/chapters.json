@@ -1,0 +1,1028 @@
+[
+ {
+  "id": 1,
+  "name_simple": "Al-Fatihah",
+  "name_arabic": "الفاتحة",
+  "name_en": "The Opener",
+  "name_id": "Pembukaan",
+  "verses_count": 7,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 2,
+  "name_simple": "Al-Baqarah",
+  "name_arabic": "البقرة",
+  "name_en": "The Cow",
+  "name_id": "Sapi Betina",
+  "verses_count": 286,
+  "revelation_place": "madinah"
+ },
+ {
+  "id": 3,
+  "name_simple": "Ali 'Imran",
+  "name_arabic": "آل عمران",
+  "name_en": "Family of Imran",
+  "name_id": "Keluarga Imran",
+  "verses_count": 200,
+  "revelation_place": "madinah"
+ },
+ {
+  "id": 4,
+  "name_simple": "An-Nisa",
+  "name_arabic": "النساء",
+  "name_en": "The Women",
+  "name_id": "Wanita",
+  "verses_count": 176,
+  "revelation_place": "madinah"
+ },
+ {
+  "id": 5,
+  "name_simple": "Al-Ma'idah",
+  "name_arabic": "المائدة",
+  "name_en": "The Table Spread",
+  "name_id": "Jamuan (Hidangan Makanan)",
+  "verses_count": 120,
+  "revelation_place": "madinah"
+ },
+ {
+  "id": 6,
+  "name_simple": "Al-An'am",
+  "name_arabic": "الأنعام",
+  "name_en": "The Cattle",
+  "name_id": "Binatang Ternak",
+  "verses_count": 165,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 7,
+  "name_simple": "Al-A'raf",
+  "name_arabic": "الأعراف",
+  "name_en": "The Heights",
+  "name_id": "Tempat-tempat Tinggi",
+  "verses_count": 206,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 8,
+  "name_simple": "Al-Anfal",
+  "name_arabic": "الأنفال",
+  "name_en": "The Spoils of War",
+  "name_id": "Rampasan Perang",
+  "verses_count": 75,
+  "revelation_place": "madinah"
+ },
+ {
+  "id": 9,
+  "name_simple": "At-Tawbah",
+  "name_arabic": "التوبة",
+  "name_en": "The Repentance",
+  "name_id": "Pengampunan",
+  "verses_count": 129,
+  "revelation_place": "madinah"
+ },
+ {
+  "id": 10,
+  "name_simple": "Yunus",
+  "name_arabic": "يونس",
+  "name_en": "Jonah",
+  "name_id": "Yunus",
+  "verses_count": 109,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 11,
+  "name_simple": "Hud",
+  "name_arabic": "هود",
+  "name_en": "Hud",
+  "name_id": "Hud",
+  "verses_count": 123,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 12,
+  "name_simple": "Yusuf",
+  "name_arabic": "يوسف",
+  "name_en": "Joseph",
+  "name_id": "Yusuf",
+  "verses_count": 111,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 13,
+  "name_simple": "Ar-Ra'd",
+  "name_arabic": "الرعد",
+  "name_en": "The Thunder",
+  "name_id": "Guruh (Petir)",
+  "verses_count": 43,
+  "revelation_place": "madinah"
+ },
+ {
+  "id": 14,
+  "name_simple": "Ibrahim",
+  "name_arabic": "ابراهيم",
+  "name_en": "Abraham",
+  "name_id": "Ibrahim",
+  "verses_count": 52,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 15,
+  "name_simple": "Al-Hijr",
+  "name_arabic": "الحجر",
+  "name_en": "The Rocky Tract",
+  "name_id": "Bukit",
+  "verses_count": 99,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 16,
+  "name_simple": "An-Nahl",
+  "name_arabic": "النحل",
+  "name_en": "The Bee",
+  "name_id": "Lebah Madu",
+  "verses_count": 128,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 17,
+  "name_simple": "Al-Isra",
+  "name_arabic": "الإسراء",
+  "name_en": "The Night Journey",
+  "name_id": "Perjalanan Malam",
+  "verses_count": 111,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 18,
+  "name_simple": "Al-Kahf",
+  "name_arabic": "الكهف",
+  "name_en": "The Cave",
+  "name_id": "Para Penghuni Gua",
+  "verses_count": 110,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 19,
+  "name_simple": "Maryam",
+  "name_arabic": "مريم",
+  "name_en": "Mary",
+  "name_id": "Maryam",
+  "verses_count": 98,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 20,
+  "name_simple": "Taha",
+  "name_arabic": "طه",
+  "name_en": "Ta-Ha",
+  "name_id": "Tha-Ha",
+  "verses_count": 135,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 21,
+  "name_simple": "Al-Anbya",
+  "name_arabic": "الأنبياء",
+  "name_en": "The Prophets",
+  "name_id": "Para Nabi",
+  "verses_count": 112,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 22,
+  "name_simple": "Al-Hajj",
+  "name_arabic": "الحج",
+  "name_en": "The Pilgrimage",
+  "name_id": "Haji",
+  "verses_count": 78,
+  "revelation_place": "madinah"
+ },
+ {
+  "id": 23,
+  "name_simple": "Al-Mu'minun",
+  "name_arabic": "المؤمنون",
+  "name_en": "The Believers",
+  "name_id": "Orang-orang Mukmin",
+  "verses_count": 118,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 24,
+  "name_simple": "An-Nur",
+  "name_arabic": "النور",
+  "name_en": "The Light",
+  "name_id": "Cahaya",
+  "verses_count": 64,
+  "revelation_place": "madinah"
+ },
+ {
+  "id": 25,
+  "name_simple": "Al-Furqan",
+  "name_arabic": "الفرقان",
+  "name_en": "The Criterion",
+  "name_id": "Pembeda",
+  "verses_count": 77,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 26,
+  "name_simple": "Ash-Shu'ara",
+  "name_arabic": "الشعراء",
+  "name_en": "The Poets",
+  "name_id": "Penyair",
+  "verses_count": 227,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 27,
+  "name_simple": "An-Naml",
+  "name_arabic": "النمل",
+  "name_en": "The Ant",
+  "name_id": "Semut",
+  "verses_count": 93,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 28,
+  "name_simple": "Al-Qasas",
+  "name_arabic": "القصص",
+  "name_en": "The Stories",
+  "name_id": "Kisah-kisah",
+  "verses_count": 88,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 29,
+  "name_simple": "Al-'Ankabut",
+  "name_arabic": "العنكبوت",
+  "name_en": "The Spider",
+  "name_id": "Laba-laba",
+  "verses_count": 69,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 30,
+  "name_simple": "Ar-Rum",
+  "name_arabic": "الروم",
+  "name_en": "The Romans",
+  "name_id": "Bangsa Romawi",
+  "verses_count": 60,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 31,
+  "name_simple": "Luqman",
+  "name_arabic": "لقمان",
+  "name_en": "Luqman",
+  "name_id": "Luqman",
+  "verses_count": 34,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 32,
+  "name_simple": "As-Sajdah",
+  "name_arabic": "السجدة",
+  "name_en": "The Prostration",
+  "name_id": "Sujud",
+  "verses_count": 30,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 33,
+  "name_simple": "Al-Ahzab",
+  "name_arabic": "الأحزاب",
+  "name_en": "The Combined Forces",
+  "name_id": "Golongan yang Bersekutu",
+  "verses_count": 73,
+  "revelation_place": "madinah"
+ },
+ {
+  "id": 34,
+  "name_simple": "Saba",
+  "name_arabic": "سبإ",
+  "name_en": "Sheba",
+  "name_id": "Saba\\'",
+  "verses_count": 54,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 35,
+  "name_simple": "Fatir",
+  "name_arabic": "فاطر",
+  "name_en": "Originator",
+  "name_id": "Pencipta",
+  "verses_count": 45,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 36,
+  "name_simple": "Ya-Sin",
+  "name_arabic": "يس",
+  "name_en": "Ya Sin",
+  "name_id": "Yas Sin",
+  "verses_count": 83,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 37,
+  "name_simple": "As-Saffat",
+  "name_arabic": "الصافات",
+  "name_en": "Those who set the Ranks",
+  "name_id": "Barisan-barisan",
+  "verses_count": 182,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 38,
+  "name_simple": "Sad",
+  "name_arabic": "ص",
+  "name_en": "The Letter \"Saad\"",
+  "name_id": "Shad",
+  "verses_count": 88,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 39,
+  "name_simple": "Az-Zumar",
+  "name_arabic": "الزمر",
+  "name_en": "The Troops",
+  "name_id": "Para Rombongan",
+  "verses_count": 75,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 40,
+  "name_simple": "Ghafir",
+  "name_arabic": "غافر",
+  "name_en": "The Forgiver",
+  "name_id": "Sang Maha Pengampun",
+  "verses_count": 85,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 41,
+  "name_simple": "Fussilat",
+  "name_arabic": "فصلت",
+  "name_en": "Explained in Detail",
+  "name_id": "Yang Dijelaskan",
+  "verses_count": 54,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 42,
+  "name_simple": "Ash-Shuraa",
+  "name_arabic": "الشورى",
+  "name_en": "The Consultation",
+  "name_id": "Musyawarah",
+  "verses_count": 53,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 43,
+  "name_simple": "Az-Zukhruf",
+  "name_arabic": "الزخرف",
+  "name_en": "The Ornaments of Gold",
+  "name_id": "Perhiasan",
+  "verses_count": 89,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 44,
+  "name_simple": "Ad-Dukhan",
+  "name_arabic": "الدخان",
+  "name_en": "The Smoke",
+  "name_id": "Kabut",
+  "verses_count": 59,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 45,
+  "name_simple": "Al-Jathiyah",
+  "name_arabic": "الجاثية",
+  "name_en": "The Crouching",
+  "name_id": "Yang Bertekuk Lutut",
+  "verses_count": 37,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 46,
+  "name_simple": "Al-Ahqaf",
+  "name_arabic": "الأحقاف",
+  "name_en": "The Wind-Curved Sandhills",
+  "name_id": "Bukit-bukir Pasir",
+  "verses_count": 35,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 47,
+  "name_simple": "Muhammad",
+  "name_arabic": "محمد",
+  "name_en": "Muhammad",
+  "name_id": "Muhammad",
+  "verses_count": 38,
+  "revelation_place": "madinah"
+ },
+ {
+  "id": 48,
+  "name_simple": "Al-Fath",
+  "name_arabic": "الفتح",
+  "name_en": "The Victory",
+  "name_id": "Kemenangan",
+  "verses_count": 29,
+  "revelation_place": "madinah"
+ },
+ {
+  "id": 49,
+  "name_simple": "Al-Hujurat",
+  "name_arabic": "الحجرات",
+  "name_en": "The Rooms",
+  "name_id": "Kamar-kamar",
+  "verses_count": 18,
+  "revelation_place": "madinah"
+ },
+ {
+  "id": 50,
+  "name_simple": "Qaf",
+  "name_arabic": "ق",
+  "name_en": "The Letter \"Qaf\"",
+  "name_id": "Qaf",
+  "verses_count": 45,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 51,
+  "name_simple": "Adh-Dhariyat",
+  "name_arabic": "الذاريات",
+  "name_en": "The Winnowing Winds",
+  "name_id": "Angin yang Menerbangkan",
+  "verses_count": 60,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 52,
+  "name_simple": "At-Tur",
+  "name_arabic": "الطور",
+  "name_en": "The Mount",
+  "name_id": "Bukit",
+  "verses_count": 49,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 53,
+  "name_simple": "An-Najm",
+  "name_arabic": "النجم",
+  "name_en": "The Star",
+  "name_id": "Bintang",
+  "verses_count": 62,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 54,
+  "name_simple": "Al-Qamar",
+  "name_arabic": "القمر",
+  "name_en": "The Moon",
+  "name_id": "Bulan",
+  "verses_count": 55,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 55,
+  "name_simple": "Ar-Rahman",
+  "name_arabic": "الرحمن",
+  "name_en": "The Beneficent",
+  "name_id": "Yang Maha Pemurah",
+  "verses_count": 78,
+  "revelation_place": "madinah"
+ },
+ {
+  "id": 56,
+  "name_simple": "Al-Waqi'ah",
+  "name_arabic": "الواقعة",
+  "name_en": "The Inevitable",
+  "name_id": "Hari Kiamat",
+  "verses_count": 96,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 57,
+  "name_simple": "Al-Hadid",
+  "name_arabic": "الحديد",
+  "name_en": "The Iron",
+  "name_id": "Besi",
+  "verses_count": 29,
+  "revelation_place": "madinah"
+ },
+ {
+  "id": 58,
+  "name_simple": "Al-Mujadila",
+  "name_arabic": "المجادلة",
+  "name_en": "The Pleading Woman",
+  "name_id": "Wanita yang Menggugat",
+  "verses_count": 22,
+  "revelation_place": "madinah"
+ },
+ {
+  "id": 59,
+  "name_simple": "Al-Hashr",
+  "name_arabic": "الحشر",
+  "name_en": "The Exile",
+  "name_id": "Pengusiran",
+  "verses_count": 24,
+  "revelation_place": "madinah"
+ },
+ {
+  "id": 60,
+  "name_simple": "Al-Mumtahanah",
+  "name_arabic": "الممتحنة",
+  "name_en": "She that is to be examined",
+  "name_id": "Wanita yang Diuji",
+  "verses_count": 13,
+  "revelation_place": "madinah"
+ },
+ {
+  "id": 61,
+  "name_simple": "As-Saf",
+  "name_arabic": "الصف",
+  "name_en": "The Ranks",
+  "name_id": "Barisan",
+  "verses_count": 14,
+  "revelation_place": "madinah"
+ },
+ {
+  "id": 62,
+  "name_simple": "Al-Jumu'ah",
+  "name_arabic": "الجمعة",
+  "name_en": "The Congregation, Friday",
+  "name_id": "Hari Jum\\'at",
+  "verses_count": 11,
+  "revelation_place": "madinah"
+ },
+ {
+  "id": 63,
+  "name_simple": "Al-Munafiqun",
+  "name_arabic": "المنافقون",
+  "name_en": "The Hypocrites",
+  "name_id": "Kaum Munafik",
+  "verses_count": 11,
+  "revelation_place": "madinah"
+ },
+ {
+  "id": 64,
+  "name_simple": "At-Taghabun",
+  "name_arabic": "التغابن",
+  "name_en": "The Mutual Disillusion",
+  "name_id": "Hari Dinampakkan Kesalahan",
+  "verses_count": 18,
+  "revelation_place": "madinah"
+ },
+ {
+  "id": 65,
+  "name_simple": "At-Talaq",
+  "name_arabic": "الطلاق",
+  "name_en": "The Divorce",
+  "name_id": "Perceraian",
+  "verses_count": 12,
+  "revelation_place": "madinah"
+ },
+ {
+  "id": 66,
+  "name_simple": "At-Tahrim",
+  "name_arabic": "التحريم",
+  "name_en": "The Prohibition",
+  "name_id": "Mengharamkan",
+  "verses_count": 12,
+  "revelation_place": "madinah"
+ },
+ {
+  "id": 67,
+  "name_simple": "Al-Mulk",
+  "name_arabic": "الملك",
+  "name_en": "The Sovereignty",
+  "name_id": "Kerajaan",
+  "verses_count": 30,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 68,
+  "name_simple": "Al-Qalam",
+  "name_arabic": "القلم",
+  "name_en": "The Pen",
+  "name_id": "Pena",
+  "verses_count": 52,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 69,
+  "name_simple": "Al-Haqqah",
+  "name_arabic": "الحاقة",
+  "name_en": "The Reality",
+  "name_id": "Kenyataan (Hari Kiamat)",
+  "verses_count": 52,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 70,
+  "name_simple": "Al-Ma'arij",
+  "name_arabic": "المعارج",
+  "name_en": "The Ascending Stairways",
+  "name_id": "Tempat yang Naik",
+  "verses_count": 44,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 71,
+  "name_simple": "Nuh",
+  "name_arabic": "نوح",
+  "name_en": "Noah",
+  "name_id": "Nuh",
+  "verses_count": 28,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 72,
+  "name_simple": "Al-Jinn",
+  "name_arabic": "الجن",
+  "name_en": "The Jinn",
+  "name_id": "Jin",
+  "verses_count": 28,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 73,
+  "name_simple": "Al-Muzzammil",
+  "name_arabic": "المزمل",
+  "name_en": "The Enshrouded One",
+  "name_id": "Orang yang Berselimut",
+  "verses_count": 20,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 74,
+  "name_simple": "Al-Muddaththir",
+  "name_arabic": "المدثر",
+  "name_en": "The Cloaked One",
+  "name_id": "Orang yang Berkemul",
+  "verses_count": 56,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 75,
+  "name_simple": "Al-Qiyamah",
+  "name_arabic": "القيامة",
+  "name_en": "The Resurrection",
+  "name_id": "Hari Berbangkit",
+  "verses_count": 40,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 76,
+  "name_simple": "Al-Insan",
+  "name_arabic": "الانسان",
+  "name_en": "The Man",
+  "name_id": "Manusia",
+  "verses_count": 31,
+  "revelation_place": "madinah"
+ },
+ {
+  "id": 77,
+  "name_simple": "Al-Mursalat",
+  "name_arabic": "المرسلات",
+  "name_en": "The Emissaries",
+  "name_id": "Malaikat-malaikan yang Diutus",
+  "verses_count": 50,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 78,
+  "name_simple": "An-Naba",
+  "name_arabic": "النبإ",
+  "name_en": "The Tidings",
+  "name_id": "Berita Besar",
+  "verses_count": 40,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 79,
+  "name_simple": "An-Nazi'at",
+  "name_arabic": "النازعات",
+  "name_en": "Those who drag forth",
+  "name_id": "Malaikat yang Mencabut",
+  "verses_count": 46,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 80,
+  "name_simple": "'Abasa",
+  "name_arabic": "عبس",
+  "name_en": "He Frowned",
+  "name_id": "Ia Bermuka Masam",
+  "verses_count": 42,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 81,
+  "name_simple": "At-Takwir",
+  "name_arabic": "التكوير",
+  "name_en": "The Overthrowing",
+  "name_id": "Menggulung",
+  "verses_count": 29,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 82,
+  "name_simple": "Al-Infitar",
+  "name_arabic": "الإنفطار",
+  "name_en": "The Cleaving",
+  "name_id": "Terbelah",
+  "verses_count": 19,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 83,
+  "name_simple": "Al-Mutaffifin",
+  "name_arabic": "المطففين",
+  "name_en": "The Defrauding",
+  "name_id": "Orang-orang Curang",
+  "verses_count": 36,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 84,
+  "name_simple": "Al-Inshiqaq",
+  "name_arabic": "الإنشقاق",
+  "name_en": "The Sundering",
+  "name_id": "Terbelah",
+  "verses_count": 25,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 85,
+  "name_simple": "Al-Buruj",
+  "name_arabic": "البروج",
+  "name_en": "The Mansions of the Stars",
+  "name_id": "Gugusan Bintang",
+  "verses_count": 22,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 86,
+  "name_simple": "At-Tariq",
+  "name_arabic": "الطارق",
+  "name_en": "The Nightcommer",
+  "name_id": "Yang Datang di Malam Hari",
+  "verses_count": 17,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 87,
+  "name_simple": "Al-A'la",
+  "name_arabic": "الأعلى",
+  "name_en": "The Most High",
+  "name_id": "Yang Paling Tinggi",
+  "verses_count": 19,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 88,
+  "name_simple": "Al-Ghashiyah",
+  "name_arabic": "الغاشية",
+  "name_en": "The Overwhelming",
+  "name_id": "Hari Pembalasan",
+  "verses_count": 26,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 89,
+  "name_simple": "Al-Fajr",
+  "name_arabic": "الفجر",
+  "name_en": "The Dawn",
+  "name_id": "Fajar",
+  "verses_count": 30,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 90,
+  "name_simple": "Al-Balad",
+  "name_arabic": "البلد",
+  "name_en": "The City",
+  "name_id": "Negeri",
+  "verses_count": 20,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 91,
+  "name_simple": "Ash-Shams",
+  "name_arabic": "الشمس",
+  "name_en": "The Sun",
+  "name_id": "Matahari",
+  "verses_count": 15,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 92,
+  "name_simple": "Al-Layl",
+  "name_arabic": "الليل",
+  "name_en": "The Night",
+  "name_id": "Malam",
+  "verses_count": 21,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 93,
+  "name_simple": "Ad-Duhaa",
+  "name_arabic": "الضحى",
+  "name_en": "The Morning Hours",
+  "name_id": "Waktu Dhuha",
+  "verses_count": 11,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 94,
+  "name_simple": "Ash-Sharh",
+  "name_arabic": "الشرح",
+  "name_en": "The Relief",
+  "name_id": "Melapangkan",
+  "verses_count": 8,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 95,
+  "name_simple": "At-Tin",
+  "name_arabic": "التين",
+  "name_en": "The Fig",
+  "name_id": "Buah Tin",
+  "verses_count": 8,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 96,
+  "name_simple": "Al-'Alaq",
+  "name_arabic": "العلق",
+  "name_en": "The Clot",
+  "name_id": "Segumpal Darah",
+  "verses_count": 19,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 97,
+  "name_simple": "Al-Qadr",
+  "name_arabic": "القدر",
+  "name_en": "The Power",
+  "name_id": "Kemuliaan",
+  "verses_count": 5,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 98,
+  "name_simple": "Al-Bayyinah",
+  "name_arabic": "البينة",
+  "name_en": "The Clear Proof",
+  "name_id": "Pembuktian",
+  "verses_count": 8,
+  "revelation_place": "madinah"
+ },
+ {
+  "id": 99,
+  "name_simple": "Az-Zalzalah",
+  "name_arabic": "الزلزلة",
+  "name_en": "The Earthquake",
+  "name_id": "Kegoncangan",
+  "verses_count": 8,
+  "revelation_place": "madinah"
+ },
+ {
+  "id": 100,
+  "name_simple": "Al-'Adiyat",
+  "name_arabic": "العاديات",
+  "name_en": "The Courser",
+  "name_id": "Berlari Kencang",
+  "verses_count": 11,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 101,
+  "name_simple": "Al-Qari'ah",
+  "name_arabic": "القارعة",
+  "name_en": "The Calamity",
+  "name_id": "Hari Kiamat",
+  "verses_count": 11,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 102,
+  "name_simple": "At-Takathur",
+  "name_arabic": "التكاثر",
+  "name_en": "The Rivalry in world increase",
+  "name_id": "Bermegah-megahan",
+  "verses_count": 8,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 103,
+  "name_simple": "Al-'Asr",
+  "name_arabic": "العصر",
+  "name_en": "The Declining Day",
+  "name_id": "Waktu Sore",
+  "verses_count": 3,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 104,
+  "name_simple": "Al-Humazah",
+  "name_arabic": "الهمزة",
+  "name_en": "The Traducer",
+  "name_id": "Pengumpat",
+  "verses_count": 9,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 105,
+  "name_simple": "Al-Fil",
+  "name_arabic": "الفيل",
+  "name_en": "The Elephant",
+  "name_id": "Gajah",
+  "verses_count": 5,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 106,
+  "name_simple": "Quraysh",
+  "name_arabic": "قريش",
+  "name_en": "Quraysh",
+  "name_id": "Suku Quraisy",
+  "verses_count": 4,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 107,
+  "name_simple": "Al-Ma'un",
+  "name_arabic": "الماعون",
+  "name_en": "The Small kindnesses",
+  "name_id": "Barang yang Berguna",
+  "verses_count": 7,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 108,
+  "name_simple": "Al-Kawthar",
+  "name_arabic": "الكوثر",
+  "name_en": "The Abundance",
+  "name_id": "Nikmat Berlimpah",
+  "verses_count": 3,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 109,
+  "name_simple": "Al-Kafirun",
+  "name_arabic": "الكافرون",
+  "name_en": "The Disbelievers",
+  "name_id": "Orang-orang Kafir",
+  "verses_count": 6,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 110,
+  "name_simple": "An-Nasr",
+  "name_arabic": "النصر",
+  "name_en": "The Divine Support",
+  "name_id": "Pertolongan",
+  "verses_count": 3,
+  "revelation_place": "madinah"
+ },
+ {
+  "id": 111,
+  "name_simple": "Al-Masad",
+  "name_arabic": "المسد",
+  "name_en": "The Palm Fiber",
+  "name_id": "Gejolak Api (Sabut)",
+  "verses_count": 5,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 112,
+  "name_simple": "Al-Ikhlas",
+  "name_arabic": "الإخلاص",
+  "name_en": "The Sincerity",
+  "name_id": "Ikhlash",
+  "verses_count": 4,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 113,
+  "name_simple": "Al-Falaq",
+  "name_arabic": "الفلق",
+  "name_en": "The Daybreak",
+  "name_id": "Waktu Shubuh",
+  "verses_count": 5,
+  "revelation_place": "makkah"
+ },
+ {
+  "id": 114,
+  "name_simple": "An-Nas",
+  "name_arabic": "الناس",
+  "name_en": "Mankind",
+  "name_id": "Umat Manusia",
+  "verses_count": 6,
+  "revelation_place": "makkah"
+ }
+]

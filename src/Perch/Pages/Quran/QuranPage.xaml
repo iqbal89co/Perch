@@ -1,0 +1,245 @@
+<core:IslandPage x:Class="Perch.Pages.Quran.QuranPage"
+                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                 xmlns:core="clr-namespace:Perch.Core">
+    <core:IslandPage.Resources>
+        <!-- Full-width row button (surah, reciter, setting) with a left-aligned, stretched content. -->
+        <Style x:Key="QuranRow" TargetType="Button" BasedOn="{StaticResource PerchGhostButton}">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="Padding" Value="8,4" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bg" Background="{TemplateBinding Background}" CornerRadius="10" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Stretch" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bg" Property="Background" Value="{DynamicResource IslandCardHover}" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bg" Property="Opacity" Value="0.75" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Small round transport button. -->
+        <Style x:Key="QuranTransport" TargetType="Button" BasedOn="{StaticResource PerchIconButton}">
+            <Setter Property="Width" Value="30" />
+            <Setter Property="Height" Value="30" />
+            <Setter Property="FontSize" Value="13" />
+        </Style>
+
+        <!-- Filled accent circle for play and pause. -->
+        <Style x:Key="QuranPlayButton" TargetType="Button" BasedOn="{StaticResource PerchIconButton}">
+            <Setter Property="Width" Value="40" />
+            <Setter Property="Height" Value="40" />
+            <Setter Property="FontSize" Value="16" />
+            <Setter Property="Foreground" Value="{DynamicResource IslandOnAccent}" />
+            <Setter Property="Background" Value="{DynamicResource IslandAccent}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bg" Background="{TemplateBinding Background}" CornerRadius="20">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bg" Property="Opacity" Value="0.88" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bg" Property="Opacity" Value="0.7" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Bg" Property="Opacity" Value="0.4" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </core:IslandPage.Resources>
+
+    <Grid>
+        <!-- Browse: reciter, search and the surah list -->
+        <Grid x:Name="BrowseView">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <Grid Margin="0,0,0,8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <Button x:Name="ReciterButton" Style="{StaticResource PerchGhostButton}" Height="34" Padding="12,0"
+                        MaxWidth="300" ToolTip="Choose a reciter">
+                    <TextBlock x:Name="ReciterText" Style="{StaticResource PerchBody}" FontSize="12.5" />
+                </Button>
+
+                <Grid Grid.Column="1" Margin="8,0">
+                    <TextBox x:Name="SearchBox" Style="{StaticResource PerchTextBox}" Height="34" />
+                    <TextBlock x:Name="SearchHint" Text="Search by number, name or meaning" Style="{StaticResource PerchCaption}"
+                               VerticalAlignment="Center" Margin="10,0,10,0" IsHitTestVisible="False" />
+                </Grid>
+
+                <Button x:Name="BrowseSettingsButton" Grid.Column="2" Style="{StaticResource PerchIconButton}"
+                        Content="&#xE713;" ToolTip="Quran settings" />
+            </Grid>
+
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel x:Name="SurahList" Margin="0,0,8,0" />
+            </ScrollViewer>
+        </Grid>
+
+        <!-- Now playing: header, the ayah text, and the player bar -->
+        <Grid x:Name="NowView" Visibility="Collapsed">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <Grid Margin="0,0,0,6">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Button x:Name="BackButton" Style="{StaticResource PerchIconButton}" Content="&#xE72B;" ToolTip="Browse surahs" />
+                <StackPanel Grid.Column="1" Margin="6,0,6,0" VerticalAlignment="Center">
+                    <TextBlock x:Name="TitleText" Style="{StaticResource PerchTitle}" FontSize="15" />
+                    <TextBlock x:Name="ReciterSubText" Style="{StaticResource PerchCaption}" />
+                </StackPanel>
+                <Button x:Name="NowSettingsButton" Grid.Column="2" Style="{StaticResource PerchIconButton}"
+                        Content="&#xE713;" ToolTip="Quran settings" />
+            </Grid>
+
+            <Grid Grid.Row="1">
+                <ScrollViewer x:Name="ReadScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel x:Name="AyahStack" Margin="0,0,8,0" />
+                </ScrollViewer>
+
+                <Border x:Name="StatusCard" Style="{StaticResource PerchCard}" Visibility="Collapsed"
+                        Width="360" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <StackPanel HorizontalAlignment="Center">
+                        <TextBlock x:Name="StatusText" Style="{StaticResource PerchBody}" TextAlignment="Center" TextWrapping="Wrap" />
+                        <Button x:Name="RetryButton" Style="{StaticResource PerchButton}" Content="Retry"
+                                HorizontalAlignment="Center" Margin="0,10,0,0" Visibility="Collapsed" />
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <Grid x:Name="PlayerBar" Grid.Row="2" Margin="0,6,0,0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock x:Name="ElapsedText" Style="{StaticResource PerchCaption}" MinWidth="36" />
+                    <Slider x:Name="Seek" Grid.Column="1" Style="{StaticResource PerchSlider}" Minimum="0" Maximum="1" Margin="10,0" />
+                    <TextBlock x:Name="RemainingText" Grid.Column="2" Style="{StaticResource PerchCaption}" MinWidth="36" TextAlignment="Right" />
+                </Grid>
+
+                <Grid Grid.Row="1" Margin="0,2,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Button x:Name="RepeatButton" Style="{StaticResource QuranTransport}" Content="&#xE8EE;" ToolTip="Repeat: off" />
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center">
+                        <Button x:Name="PrevSurahButton" Style="{StaticResource QuranTransport}" Content="&#xE892;" ToolTip="Previous surah" />
+                        <Button x:Name="PrevAyahButton" Style="{StaticResource QuranTransport}" Content="&#xE76B;" ToolTip="Previous ayah" Margin="6,0,0,0" />
+                        <Button x:Name="PlayButton" Style="{StaticResource QuranPlayButton}" Content="&#xE768;" ToolTip="Play or pause" Margin="8,0" />
+                        <Button x:Name="NextAyahButton" Style="{StaticResource QuranTransport}" Content="&#xE76C;" ToolTip="Next ayah" Margin="0,0,6,0" />
+                        <Button x:Name="NextSurahButton" Style="{StaticResource QuranTransport}" Content="&#xE893;" ToolTip="Next surah" />
+                    </StackPanel>
+                    <TextBlock x:Name="AyahLabel" Grid.Column="2" Style="{StaticResource PerchCaption}" VerticalAlignment="Center" MinWidth="90" TextAlignment="Right" />
+                </Grid>
+            </Grid>
+        </Grid>
+
+        <!-- Settings: six cards in two columns -->
+        <Grid x:Name="SettingsView" Visibility="Collapsed">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <Grid Margin="0,0,0,8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Button x:Name="SettingsBackButton" Style="{StaticResource PerchIconButton}" Content="&#xE72B;" ToolTip="Back" />
+                <TextBlock Grid.Column="1" Text="Quran settings" Style="{StaticResource PerchTitle}" VerticalAlignment="Center" Margin="6,0,0,0" />
+            </Grid>
+
+            <Grid Grid.Row="1" Margin="0,0,8,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="10" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="8" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="8" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <Border Style="{StaticResource PerchCard}" Padding="10,8">
+                    <StackPanel>
+                        <TextBlock Text="Translation" Style="{StaticResource PerchCaption}" />
+                        <Button x:Name="TranslationButton" Style="{StaticResource QuranRow}" Height="28" Margin="0,4,0,0" />
+                    </StackPanel>
+                </Border>
+                <Border Grid.Column="2" Style="{StaticResource PerchCard}" Padding="10,8">
+                    <StackPanel>
+                        <TextBlock Text="English translator" Style="{StaticResource PerchCaption}" />
+                        <Button x:Name="EnglishButton" Style="{StaticResource QuranRow}" Height="28" Margin="0,4,0,0" />
+                    </StackPanel>
+                </Border>
+
+                <Border Grid.Row="2" Style="{StaticResource PerchCard}" Padding="10,8">
+                    <StackPanel>
+                        <TextBlock Text="Bahasa Indonesia translator" Style="{StaticResource PerchCaption}" />
+                        <Button x:Name="IndonesianButton" Style="{StaticResource QuranRow}" Height="28" Margin="0,4,0,0" />
+                    </StackPanel>
+                </Border>
+                <Border Grid.Row="2" Grid.Column="2" Style="{StaticResource PerchCard}" Padding="10,8">
+                    <StackPanel>
+                        <TextBlock Text="Arabic size" Style="{StaticResource PerchCaption}" />
+                        <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                            <Button x:Name="ArabicMinusButton" Style="{StaticResource QuranTransport}" Content="&#xE949;" ToolTip="Smaller" />
+                            <TextBlock x:Name="ArabicSizeText" Style="{StaticResource PerchBody}" Width="48" TextAlignment="Center" VerticalAlignment="Center" />
+                            <Button x:Name="ArabicPlusButton" Style="{StaticResource QuranTransport}" Content="&#xE948;" ToolTip="Larger" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <Border Grid.Row="4" Style="{StaticResource PerchCard}" Padding="10,8">
+                    <CheckBox x:Name="TransliterationToggle" Style="{StaticResource PerchToggle}" Content="Show transliteration" VerticalAlignment="Center" />
+                </Border>
+                <Border Grid.Row="4" Grid.Column="2" Style="{StaticResource PerchCard}" Padding="10,8">
+                    <CheckBox x:Name="ContinueToggle" Style="{StaticResource PerchToggle}" Content="Continue to next surah" VerticalAlignment="Center" />
+                </Border>
+            </Grid>
+        </Grid>
+    </Grid>
+</core:IslandPage>
