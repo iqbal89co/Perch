@@ -56,7 +56,7 @@ $missing = $expected | Where-Object { $pages -notcontains $_ }
 Check "all pages discovered" ($ok -and -not $missing) ("found: " + ($pages -join ", ") + $(if ($missing) { "; missing: " + ($missing -join ", ") } else { "" }))
 
 # ---------------------------------------------------------------- 2. every page renders in every theme
-foreach ($theme in "Midnight", "Daylight", "Smoke", "Aurora") {
+foreach ($theme in "Tide", "Apricot", "Midnight", "Daylight") {
     foreach ($page in $pages) {
         $png = Join-Path $OutDir ("{0}-{1}.png" -f $page, $theme.ToLower())
         if (Test-Path $png) { Remove-Item $png }

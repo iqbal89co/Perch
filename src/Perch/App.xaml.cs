@@ -12,7 +12,7 @@ namespace Perch;
 /// <summary>
 /// Startup. Command-line switches (used by the automated UI tests):
 ///   --data-dir DIR       keep settings/data in DIR (also skips touching the Run key)
-///   --theme NAME         Midnight|Daylight|Smoke|Aurora for this run only
+///   --theme NAME         Tide|Apricot|Midnight|Daylight for this run only
 ///   --shape NAME         Docked|Floating for this run only
 ///   --expand PAGEID      open the island on that page and keep it open
 ///   --notify TEXT        show a notice on the resting island

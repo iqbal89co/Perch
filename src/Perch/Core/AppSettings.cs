@@ -1,6 +1,7 @@
 namespace Perch.Core;
 
-public enum IslandTheme { Midnight, Daylight, Smoke, Aurora }
+/// <summary>Tide and Apricot are the glass themes. Smoke and Aurora are retired and draw as Tide.</summary>
+public enum IslandTheme { Midnight, Daylight, Smoke, Aurora, Tide, Apricot }
 
 public enum IslandShape { Docked, Floating }
 
@@ -17,13 +18,31 @@ public sealed class PomodoroSettings
 /// <summary>Everything the user can change. Persisted as data/settings.json.</summary>
 public sealed class AppSettings
 {
-    public int SettingsVersion { get; set; } = 1;
+    public const int CurrentVersion = 2;
+
+    /// <summary>
+    /// Brings settings saved by an older version up to date. Version 2 introduced the glass themes:
+    /// Smoke and Aurora move to Tide, and the accent follows the theme. Returns true when anything changed.
+    /// </summary>
+    public bool Migrate()
+    {
+        if (SettingsVersion >= CurrentVersion) return false;
+        if (SettingsVersion < 2)
+        {
+            if (Theme is IslandTheme.Smoke or IslandTheme.Aurora) Theme = IslandTheme.Tide;
+            Accent = "auto";
+        }
+        SettingsVersion = CurrentVersion;
+        return true;
+    }
+
+    public int SettingsVersion { get; set; } = CurrentVersion;
 
     // Look
-    public IslandTheme Theme { get; set; } = IslandTheme.Midnight;
+    public IslandTheme Theme { get; set; } = IslandTheme.Tide;
     public IslandShape Shape { get; set; } = IslandShape.Docked;
-    /// <summary>Accent colour as #RRGGBB.</summary>
-    public string Accent { get; set; } = "#2DD4BF";
+    /// <summary>Accent colour as #RRGGBB, or "auto" for the theme's own accent.</summary>
+    public string Accent { get; set; } = "auto";
     public bool Use24h { get; set; } = true;
     public bool ShowSecondsInPill { get; set; } = false;
 

@@ -29,6 +29,7 @@ public sealed class IslandContext
     {
         Dispatcher = dispatcher;
         Settings = JsonStore.Load<AppSettings>("settings");
+        if (Settings.Migrate()) JsonStore.Save("settings", Settings);
         Media = new MediaService(dispatcher);
     }
 

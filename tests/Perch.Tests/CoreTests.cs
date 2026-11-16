@@ -101,26 +101,58 @@ public class JsonStoreTests : IDisposable
     [Fact]
     public void Settings_round_trip_with_snake_case_and_enum_names()
     {
-        var s = new AppSettings { Theme = IslandTheme.Aurora, Shape = IslandShape.Floating, HoverDelayMs = 99 };
+        var s = new AppSettings { Theme = IslandTheme.Apricot, Shape = IslandShape.Floating, HoverDelayMs = 99 };
         s.HiddenTabs.Add("tasks");
         JsonStore.Save("settings", s);
 
         var json = File.ReadAllText(JsonStore.PathFor("settings"));
         Assert.Contains("\"hover_delay_ms\": 99", json);
-        Assert.Contains("\"theme\": \"aurora\"", json);
+        Assert.Contains("\"theme\": \"apricot\"", json);
 
         var back = JsonStore.Load<AppSettings>("settings");
-        Assert.Equal(IslandTheme.Aurora, back.Theme);
+        Assert.Equal(IslandTheme.Apricot, back.Theme);
         Assert.Equal(IslandShape.Floating, back.Shape);
         Assert.Equal(99, back.HoverDelayMs);
         Assert.Equal(new[] { "tasks" }, back.HiddenTabs);
     }
 
     [Fact]
+    public void Version_1_settings_move_to_the_glass_themes_and_the_theme_accent()
+    {
+        File.WriteAllText(JsonStore.PathFor("settings"),
+            "{\"settings_version\": 1, \"theme\": \"aurora\", \"accent\": \"#FB923C\", \"shape\": \"floating\"}");
+        var s = JsonStore.Load<AppSettings>("settings");
+        Assert.True(s.Migrate());
+        Assert.Equal(IslandTheme.Tide, s.Theme);
+        Assert.Equal("auto", s.Accent);
+        Assert.Equal(IslandShape.Floating, s.Shape);
+        Assert.Equal(AppSettings.CurrentVersion, s.SettingsVersion);
+        Assert.False(s.Migrate());
+
+        var daylight = new AppSettings { SettingsVersion = 1, Theme = IslandTheme.Daylight, Accent = "#60A5FA" };
+        daylight.Migrate();
+        Assert.Equal(IslandTheme.Daylight, daylight.Theme);
+    }
+
+    [Fact]
+    public void Retired_themes_draw_as_tide_and_auto_accent_is_recognised()
+    {
+        Assert.Equal(IslandTheme.Tide, ThemeManager.Effective(IslandTheme.Aurora));
+        Assert.Equal(IslandTheme.Tide, ThemeManager.Effective(IslandTheme.Smoke));
+        Assert.Equal(IslandTheme.Apricot, ThemeManager.Effective(IslandTheme.Apricot));
+        Assert.True(ThemeManager.IsAuto("AUTO"));
+        Assert.True(ThemeManager.IsAuto(""));
+        Assert.False(ThemeManager.IsAuto("#22D3EE"));
+        Assert.DoesNotContain(IslandTheme.Aurora, ThemeManager.Offered);
+    }
+
+    [Fact]
     public void Missing_file_gives_defaults()
     {
         var s = JsonStore.Load<AppSettings>("nothing-here");
-        Assert.Equal(IslandTheme.Midnight, s.Theme);
+        Assert.Equal(IslandTheme.Tide, s.Theme);
+        Assert.Equal("auto", s.Accent);
+        Assert.False(s.Migrate());
         Assert.Equal(25, s.Pomodoro.FocusMin);
     }
 

@@ -29,7 +29,8 @@ public static class SettingsValidator
         s.Extras ??= new Dictionary<string, string>();
         s.HiddenTabs = CleanTabs(s.HiddenTabs);
 
-        if (!HexColour.IsMatch(s.Accent ?? string.Empty)) s.Accent = ThemeManager.AccentChoices[0];
+        if (ThemeManager.IsAuto(s.Accent)) s.Accent = ThemeManager.AutoAccent;
+        else if (!HexColour.IsMatch(s.Accent ?? string.Empty)) s.Accent = ThemeManager.AutoAccent;
 
         if (string.IsNullOrWhiteSpace(s.StartPage) || s.HiddenTabs.Contains(s.StartPage, StringComparer.OrdinalIgnoreCase))
             s.StartPage = DefaultStartPage;

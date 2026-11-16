@@ -216,7 +216,7 @@ public partial class SettingsWindow : Window
         Add(Heading("Theme"), 8);
         _themeCards.Clear();
         var themes = new StackPanel { Orientation = Orientation.Horizontal };
-        foreach (var theme in new[] { IslandTheme.Midnight, IslandTheme.Daylight, IslandTheme.Smoke, IslandTheme.Aurora })
+        foreach (var theme in ThemeManager.Offered)
             themes.Children.Add(ThemeCard(theme));
         Add(themes, 22);
         RefreshThemeCards();
@@ -366,6 +366,7 @@ public partial class SettingsWindow : Window
 
     private Border Swatch(string hex)
     {
+        if (ThemeManager.IsAuto(hex)) return AutoSwatch(hex);
         var color = ThemeManager.ParseColor(hex, Colors.Gray);
         var light = (0.2126 * color.R + 0.7152 * color.G + 0.0722 * color.B) / 255.0 > 0.55;
         var check = new TextBlock
@@ -400,12 +401,47 @@ public partial class SettingsWindow : Window
         return swatch;
     }
 
+    /// <summary>The "theme colour" swatch: painted with the current theme's own accent, marked with a small "A".</summary>
+    private Border AutoSwatch(string value)
+    {
+        var check = new TextBlock
+        {
+            Text = "A",
+            FontSize = 11,
+            FontWeight = FontWeights.Bold,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        check.SetResourceReference(TextBlock.ForegroundProperty, "IslandOnAccent");
+        var swatch = new Border
+        {
+            Width = 26,
+            Height = 26,
+            CornerRadius = new CornerRadius(13),
+            BorderThickness = new Thickness(2),
+            BorderBrush = Brushes.Transparent,
+            Margin = new Thickness(0, 0, 10, 0),
+            Cursor = Cursors.Hand,
+            Child = check,
+            ToolTip = "Theme colour",
+        };
+        swatch.SetResourceReference(Border.BackgroundProperty, "IslandThemeAccent");
+        swatch.MouseLeftButtonUp += (_, e) =>
+        {
+            Change(s => s.Accent = value);
+            RefreshSwatches();
+            e.Handled = true;
+        };
+        _swatches.Add(new SwatchView(value, swatch, check));
+        return swatch;
+    }
+
     private void RefreshSwatches()
     {
         foreach (var view in _swatches)
         {
             var selected = string.Equals(view.Hex, Ctx.Settings.Accent, StringComparison.OrdinalIgnoreCase);
-            view.Check.Visibility = selected ? Visibility.Visible : Visibility.Collapsed;
+            view.Check.Visibility = selected || ThemeManager.IsAuto(view.Hex) ? Visibility.Visible : Visibility.Collapsed;
             Outline(view.Ring, selected, "IslandForeground");
         }
     }
@@ -416,23 +452,11 @@ public partial class SettingsWindow : Window
         else card.BorderBrush = Brushes.Transparent;
     }
 
-    /// <summary>Fill, text and optional edge colours for a theme's preview pill (fixed on purpose).</summary>
-    private static (Brush Fill, Brush Text, Brush? Edge) Preview(IslandTheme theme) => theme switch
-    {
-        IslandTheme.Daylight => (Solid("#FAFAFC"), Solid("#14141A"), Solid("#D0D0D8")),
-        IslandTheme.Smoke => (Solid("#D91F2026"), Solid("#F4F4F6"), null),
-        IslandTheme.Aurora => (AuroraBrush(), Solid("#F1F5F9"), null),
-        _ => (Solid("#0A0A0E"), Solid("#F5F5F7"), null),
-    };
-
-    private static Brush AuroraBrush() => Frozen(new LinearGradientBrush(
-        new GradientStopCollection
-        {
-            new GradientStop(ThemeManager.ParseColor("#12102B", Colors.Black), 0),
-            new GradientStop(ThemeManager.ParseColor("#072422", Colors.Black), 1),
-        },
-        new Point(0, 0),
-        new Point(1, 1)));
+    /// <summary>Fill, text and optional edge colours for a theme's preview pill: the island's own backdrop, small.</summary>
+    private static (Brush Fill, Brush Text, Brush? Edge) Preview(IslandTheme theme) =>
+        (ThemeManager.PreviewFill(theme),
+         Frozen(new SolidColorBrush(ThemeManager.PreviewText(theme))),
+         theme is IslandTheme.Daylight or IslandTheme.Apricot ? Solid("#33000000") : null);
 
     // ---------------------------------------------------------------- Behaviour
 

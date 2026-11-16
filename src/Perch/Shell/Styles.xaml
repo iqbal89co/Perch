@@ -4,7 +4,7 @@
     <!--
       Shared look for every page. Colours come from ThemeManager as DynamicResource keys:
       IslandForeground, IslandSubtle, IslandAccent, IslandAccentSoft, IslandOnAccent,
-      IslandCard, IslandCardHover, IslandStroke, IslandDanger.
+      IslandCard, IslandCardHover, IslandStroke, IslandDanger, IslandGlassBorder.
 
       Styles (use with Style="{StaticResource Key}"):
         PerchTitle, PerchBody, PerchCaption, PerchGlyph   (TextBlock)
@@ -50,8 +50,11 @@
         <Setter Property="HorizontalAlignment" Value="Center" />
     </Style>
 
+    <!-- A glass card: translucent fill with a light rim (IslandGlassBorder) that is brightest at the top left. -->
     <Style x:Key="PerchCard" TargetType="Border">
         <Setter Property="Background" Value="{DynamicResource IslandCard}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource IslandGlassBorder}" />
+        <Setter Property="BorderThickness" Value="1" />
         <Setter Property="CornerRadius" Value="14" />
         <Setter Property="Padding" Value="12" />
     </Style>
