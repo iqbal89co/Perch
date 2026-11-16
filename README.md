@@ -45,7 +45,7 @@ the taskbar; the empty space around the island is click-through; drawing stops w
 
 ## Install
 
-Run `Perch-Setup-1.0.0.exe`. It installs for your user only (no admin prompt) into
+Run `Perch-Setup-1.1.0.exe`. It installs for your user only (no admin prompt) into
 `%LOCALAPPDATA%\Programs\Perch`, adds a Start menu entry and, if you leave the box ticked, starts Perch when
 you sign in. The app is self-contained: no .NET download needed.
 
@@ -70,7 +70,7 @@ Requires the .NET 8 SDK and (for the installer) Inno Setup 6.
 dotnet build src/Perch/Perch.csproj
 dotnet test tests/Perch.Tests
 powershell -ExecutionPolicy Bypass -File build/publish.ps1          # tests + self-contained exe + installer in dist/
-powershell -ExecutionPolicy Bypass -File build/e2e.ps1 -Installer dist/Perch-Setup-1.0.0.exe
+powershell -ExecutionPolicy Bypass -File build/e2e.ps1 -Installer dist/Perch-Setup-1.1.0.exe
 ```
 
 `docs/ARCHITECTURE.md` explains how pages and background features plug in.

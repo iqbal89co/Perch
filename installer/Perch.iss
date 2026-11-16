@@ -2,7 +2,7 @@
 ; Per-user install: no admin rights, installs to %LOCALAPPDATA%\Programs\Perch.
 
 #ifndef AppVersion
-  #define AppVersion "1.0.0"
+  #define AppVersion "1.1.0"
 #endif
 #ifndef SourceDir
   #define SourceDir "..\dist\app"
