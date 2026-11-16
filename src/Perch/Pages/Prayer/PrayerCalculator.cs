@@ -9,6 +9,9 @@ public enum AsrSchool { Standard, Hanafi }
 /// <summary>What to do when the sun never reaches the Fajr or Isha angle (high latitudes).</summary>
 public enum HighLatitudeRule { None, AngleBased, MiddleOfNight, OneSeventh }
 
+/// <summary>An Islamic date of interest (Ramadan, Eid, ...) with the number of days from the reference day.</summary>
+public sealed record IslamicEvent(string Name, DateOnly Date, int DaysUntil);
+
 /// <summary>The times of one civil day in one place. A null time means it does not occur that day.</summary>
 public sealed record PrayerDay(
     DateOnly Date,
@@ -19,6 +22,9 @@ public sealed record PrayerDay(
     DateTimeOffset? Maghrib,
     DateTimeOffset? Isha)
 {
+    /// <summary>Forenoon start (sun at +4.5 degrees, Kemenag). Informational only, never a reminder.</summary>
+    public DateTimeOffset? Dhuha { get; init; }
+
     public DateTimeOffset? At(PrayerKind kind) => kind switch
     {
         PrayerKind.Fajr => Fajr,
@@ -40,7 +46,25 @@ public static class PrayerCalculator
     private const double KaabaLatitude = 21.4225;
     private const double KaabaLongitude = 39.8262;
     private const double SunriseBaseAltitude = 0.833;
+    private const double DhuhaAltitude = 4.5;
+    private const int ImsakMinutesBeforeFajr = 10;
+    private const double EarthRadiusKm = 6371.0088;
     private const int Iterations = 2;
+
+    private static readonly string[] Compass16Names =
+        { "N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW" };
+
+    /// <summary>The Islamic dates shown in the day view: name, Hijri month and day.</summary>
+    private static readonly (string Name, int Month, int Day)[] IslamicEvents =
+    {
+        ("Islamic New Year", 1, 1),
+        ("Ashura", 1, 10),
+        ("Mawlid", 3, 12),
+        ("Isra Mi'raj", 7, 27),
+        ("Ramadan", 9, 1),
+        ("Eid al-Fitr", 10, 1),
+        ("Eid al-Adha", 12, 10),
+    };
 
     private static readonly DateTime J2000Noon = new(2000, 1, 1, 12, 0, 0, DateTimeKind.Utc);
     private static readonly PrayerKind[] PrayersInOrder =
@@ -80,6 +104,9 @@ public static class PrayerCalculator
                 if (!double.IsNaN(raw[k])) hours[k] = raw[k];
             raw = Pass(sun, hours, method, asr);
         }
+
+        // Dhuha uses the sunrise hour as its day reference, like the other times use their own hour.
+        var dhuhaRaw = sun.AltitudeTime(DhuhaAltitude, hours[1] / 24.0, morning: true);
 
         var fajr = raw[0];
         var sunrise = raw[1];
@@ -123,6 +150,7 @@ public static class PrayerCalculator
             return new DateTimeOffset(moment, offset);
         }
 
+        // Like sunrise, Dhuha gets no method adjustment: the method tables have no entry for it.
         return new PrayerDay(
             date,
             ToLocal(Adjust(fajr, PrayerKind.Fajr)),
@@ -130,7 +158,114 @@ public static class PrayerCalculator
             ToLocal(Adjust(dhuhr, PrayerKind.Dhuhr)),
             ToLocal(Adjust(asrTime, PrayerKind.Asr)),
             ToLocal(Adjust(maghrib, PrayerKind.Maghrib)),
-            ToLocal(Adjust(isha, PrayerKind.Isha)));
+            ToLocal(Adjust(isha, PrayerKind.Isha)))
+        {
+            Dhuha = ToLocal(dhuhaRaw),
+        };
+    }
+
+    /// <summary>Imsak: ten minutes before Fajr (the Kemenag convention, used for every method). Null without Fajr.</summary>
+    public static DateTimeOffset? Imsak(PrayerDay day) => day.Fajr?.AddMinutes(-ImsakMinutesBeforeFajr);
+
+    /// <summary>
+    /// Midnight is halfway between Maghrib and tomorrow's Fajr; the last third of the night starts two thirds of the
+    /// way. Null when either time is missing (high latitudes).
+    /// </summary>
+    public static (DateTimeOffset Midnight, DateTimeOffset LastThird)? Night(DateTimeOffset? maghrib, DateTimeOffset? tomorrowFajr)
+    {
+        if (maghrib is not { } start || tomorrowFajr is not { } end) return null;
+        var span = end - start;
+        return (start.Add(TimeSpan.FromTicks(span.Ticks / 2)), start.Add(TimeSpan.FromTicks(span.Ticks * 2 / 3)));
+    }
+
+    /// <summary>Length of the day from sunrise to Maghrib.</summary>
+    public static TimeSpan DayLength(DateTimeOffset sunrise, DateTimeOffset maghrib) => maghrib - sunrise;
+
+    /// <summary>Great-circle distance in kilometres from a place to the Kaaba (haversine).</summary>
+    public static double DistanceToKaabaKm(double latitude, double longitude)
+    {
+        var dPhi = Rad(KaabaLatitude - latitude);
+        var dLambda = Rad(KaabaLongitude - longitude);
+        var a = Math.Sin(dPhi / 2) * Math.Sin(dPhi / 2)
+                + Math.Cos(Rad(latitude)) * Math.Cos(Rad(KaabaLatitude)) * Math.Sin(dLambda / 2) * Math.Sin(dLambda / 2);
+        return 2 * EarthRadiusKm * Math.Asin(Math.Min(1.0, Math.Sqrt(a)));
+    }
+
+    /// <summary>The 16-point compass name for a bearing in degrees, e.g. 295 gives "WNW".</summary>
+    public static string Compass16(double bearing)
+    {
+        var normalised = (bearing % 360 + 360) % 360;
+        var index = (int)Math.Round(normalised / 22.5) % 16;
+        return Compass16Names[index];
+    }
+
+    /// <summary>
+    /// The last of the five prayers (sunrise excluded) at or before <paramref name="now"/>, looking back into
+    /// <paramref name="yesterday"/> when today has none yet. Null when neither has one.
+    /// </summary>
+    public static (string Name, DateTimeOffset Time)? PreviousPrayer(PrayerDay today, DateTimeOffset now, PrayerDay? yesterday = null)
+    {
+        for (var i = PrayersInOrder.Length - 1; i >= 0; i--)
+        {
+            if (today.At(PrayersInOrder[i]) is { } time && time <= now) return (PrayersInOrder[i].ToString(), time);
+        }
+
+        if (yesterday is null) return null;
+        for (var i = PrayersInOrder.Length - 1; i >= 0; i--)
+        {
+            if (yesterday.At(PrayersInOrder[i]) is { } time) return (PrayersInOrder[i].ToString(), time);
+        }
+
+        return null;
+    }
+
+    /// <summary>How far <paramref name="now"/> is from <paramref name="previous"/> towards <paramref name="next"/>, in [0, 1].</summary>
+    public static double PrayerProgress(DateTimeOffset previous, DateTimeOffset next, DateTimeOffset now)
+    {
+        var span = next - previous;
+        if (span <= TimeSpan.Zero) return 0;
+        var fraction = (now - previous).TotalSeconds / span.TotalSeconds;
+        return Math.Clamp(fraction, 0, 1);
+    }
+
+    /// <summary>
+    /// The nearest upcoming Islamic date of the listed kinds on or after <paramref name="today"/>, with the days
+    /// until it. Null when the calendar cannot represent the dates (outside its supported range).
+    /// </summary>
+    public static IslamicEvent? NextIslamicEvent(DateOnly today)
+    {
+        try
+        {
+            var calendar = new System.Globalization.UmAlQuraCalendar();
+            var year = calendar.GetYear(today.ToDateTime(TimeOnly.MinValue));
+            IslamicEvent? best = null;
+            foreach (var (name, month, day) in IslamicEvents)
+            {
+                // This Hijri year may already have passed the date, so the next year is checked too.
+                for (var candidateYear = year; candidateYear <= year + 1; candidateYear++)
+                {
+                    DateOnly date;
+                    try
+                    {
+                        date = DateOnly.FromDateTime(calendar.ToDateTime(candidateYear, month, day, 0, 0, 0, 0));
+                    }
+                    catch (ArgumentException)
+                    {
+                        continue; // not representable by the calendar
+                    }
+
+                    if (date < today) continue;
+                    var days = date.DayNumber - today.DayNumber;
+                    if (best is null || days < best.DaysUntil) best = new IslamicEvent(name, date, days);
+                }
+            }
+
+            return best;
+        }
+        catch (ArgumentException)
+        {
+            return null;
+        }
     }
 
     /// <summary>
