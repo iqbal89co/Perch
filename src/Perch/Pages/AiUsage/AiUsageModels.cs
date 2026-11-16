@@ -13,15 +13,6 @@ public sealed record UsageEntry(
     long CacheRead,
     string? DedupKey);
 
-/// <summary>One Codex rate-limit window (for example the 5-hour or the weekly limit).</summary>
-public sealed record RateWindow(double UsedPercent, int WindowMinutes, DateTime? ResetsAtUtc);
-
-/// <summary>The rate limits Codex reported at one moment.</summary>
-public sealed record RateLimits(DateTime TimeUtc, RateWindow? Primary, RateWindow? Secondary);
-
-/// <summary>One Codex token_count event: the tokens of that turn and the limits it reported, if any.</summary>
-public sealed record CodexEvent(DateTime TimeUtc, long Tokens, RateLimits? Limits);
-
 /// <summary>A Claude Code 5-hour window ("block") with its totals.</summary>
 public sealed record ClaudeBlock(
     DateTime StartUtc,
@@ -48,17 +39,20 @@ public sealed record ClaudeBlock(
         .FirstOrDefault();
 }
 
-/// <summary>Claude Code figures: the current 5-hour window and the last seven local days (oldest first).</summary>
-public sealed record ClaudeSummary(ClaudeBlock? Current, long[] Week, DateTime? LastActivityUtc);
+/// <summary>Totals for a span of time: active tokens (input + output), messages, and active tokens per model.</summary>
+public sealed record UsageTotal(long Tokens, int Messages, IReadOnlyDictionary<string, long> ModelTokens)
+{
+    public static readonly UsageTotal Empty = new(0, 0, new Dictionary<string, long>());
+}
 
-/// <summary>A Codex limit window as shown. Expired windows read 0% until new usage is logged.</summary>
-public sealed record CodexWindowView(string Label, double Percent, DateTime? ResetsAtUtc, bool Expired);
-
-/// <summary>Codex figures: the newest limits seen and today's tokens.</summary>
-public sealed record CodexSummary(CodexWindowView? Primary, CodexWindowView? Secondary, DateTime? LimitsSeenUtc, long TodayTokens);
+/// <summary>
+/// The three figures the page shows: the current 5-hour window, the last 7 days across all models,
+/// and the last 7 days of Fable models only.
+/// </summary>
+public sealed record ClaudeSummary(ClaudeBlock? Current, UsageTotal Week, UsageTotal FableWeek, DateTime? LastActivityUtc);
 
 /// <summary>What one scan touched, for the log line and the settings view.</summary>
 public sealed record ScanStats(int Files, long Entries, long BytesRead, long Millis, bool Full);
 
 /// <summary>An immutable result of one refresh. Built on a background thread, drawn on the UI thread.</summary>
-public sealed record AiSnapshot(DateTime NowUtc, ClaudeSummary? Claude, CodexSummary? Codex, ScanStats Stats);
+public sealed record AiSnapshot(DateTime NowUtc, ClaudeSummary? Claude, ScanStats Stats);

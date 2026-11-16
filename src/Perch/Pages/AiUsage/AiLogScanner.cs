@@ -3,7 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 namespace Perch.Pages.AiUsage;
 
 /// <summary>Everything the scanner read in one pass, flattened for aggregation.</summary>
-public sealed record ScanOutput(List<UsageEntry> Claude, List<CodexEvent> Codex, int Files, long BytesRead);
+public sealed record ScanOutput(List<UsageEntry> Claude, int Files, long BytesRead);
 
 /// <summary>
 /// Keeps one incremental index per log file and refreshes all of them. Files that disappeared are dropped.
@@ -12,28 +12,20 @@ public sealed record ScanOutput(List<UsageEntry> Claude, List<CodexEvent> Codex,
 public sealed class AiLogScanner
 {
     private readonly Dictionary<string, JsonlFileIndex<UsageEntry>> _claude = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Dictionary<string, JsonlFileIndex<CodexEvent>> _codex = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>True before the first scan and after <see cref="Reset"/>: the next scan reads everything.</summary>
-    public bool IsEmpty => _claude.Count == 0 && _codex.Count == 0;
+    public bool IsEmpty => _claude.Count == 0;
 
-    public void Reset()
-    {
-        _claude.Clear();
-        _codex.Clear();
-    }
+    public void Reset() => _claude.Clear();
 
-    public ScanOutput Scan(IReadOnlyList<string> claudeRoots, IReadOnlyList<string> codexRoots)
+    public ScanOutput Scan(IReadOnlyList<string> claudeRoots)
     {
         var counters = new Counters();
         ScanRoots(claudeRoots, _claude, AiLogParsers.ParseClaude, ref counters);
-        ScanRoots(codexRoots, _codex, AiLogParsers.ParseCodex, ref counters);
 
         var claude = new List<UsageEntry>();
         foreach (var index in _claude.Values) claude.AddRange(index.Items);
-        var codex = new List<CodexEvent>();
-        foreach (var index in _codex.Values) codex.AddRange(index.Items);
-        return new ScanOutput(claude, codex, counters.Files, counters.Bytes);
+        return new ScanOutput(claude, counters.Files, counters.Bytes);
     }
 
     private struct Counters
@@ -96,20 +88,14 @@ public sealed class AiLogScanner
 }
 
 /// <summary>
-/// Where the tools keep their logs. Each source is optional: a source whose folder does not exist is not shown.
-/// Environment variables follow the tools' own conventions. PERCH_AI_CLAUDE_DIR and PERCH_AI_CODEX_DIR take
-/// precedence and point at a folder laid out like CLAUDE_CONFIG_DIR / CODEX_HOME (used for testing).
+/// Where Claude Code keeps its logs. Only folders that exist are returned. PERCH_AI_CLAUDE_DIR takes precedence
+/// over CLAUDE_CONFIG_DIR and points at a folder laid out like it (used for testing).
 /// </summary>
 public static class AiRoots
 {
     public static List<string> ClaudeFromEnvironment() => Claude(
         Environment.GetEnvironmentVariable("PERCH_AI_CLAUDE_DIR"),
         Environment.GetEnvironmentVariable("CLAUDE_CONFIG_DIR"),
-        Environment.GetFolderPath(Environment.SpecialFolder.UserProfile));
-
-    public static List<string> CodexFromEnvironment() => Codex(
-        Environment.GetEnvironmentVariable("PERCH_AI_CODEX_DIR"),
-        Environment.GetEnvironmentVariable("CODEX_HOME"),
         Environment.GetFolderPath(Environment.SpecialFolder.UserProfile));
 
     /// <summary>Claude Code project folders that exist. CLAUDE_CONFIG_DIR may hold several comma-separated folders.</summary>
@@ -123,15 +109,6 @@ public static class AiRoots
             Path.Combine(userProfile, ".claude", "projects"),
             Path.Combine(userProfile, ".config", "claude", "projects"),
         });
-    }
-
-    /// <summary>Codex CLI session folders that exist.</summary>
-    public static List<string> Codex(string? overrideDir, string? codexHome, string userProfile)
-    {
-        if (!IsBlank(overrideDir)) return Existing(new[] { Path.Combine(overrideDir.Trim(), "sessions") });
-        if (!IsBlank(codexHome)) return Existing(new[] { Path.Combine(codexHome.Trim(), "sessions") });
-        if (IsBlank(userProfile)) return new List<string>();
-        return Existing(new[] { Path.Combine(userProfile, ".codex", "sessions") });
     }
 
     private static bool IsBlank([NotNullWhen(false)] string? s) => string.IsNullOrWhiteSpace(s);

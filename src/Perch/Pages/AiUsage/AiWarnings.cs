@@ -5,8 +5,9 @@ public sealed record AiWarningResult(IReadOnlyList<string> Messages, AiNotifiedS
 
 /// <summary>
 /// Decides which notices to post for a snapshot. Pure: the page posts the messages and saves the state.
-/// Each window warns once: a Claude 5-hour window when its budget use passes the threshold, a Codex window when
-/// its used percentage does. When a warned window resets, a "fresh" or "back" notice follows.
+/// Each figure needs a budget and warns once when its use passes the threshold. The 5-hour window warns again
+/// in the next window (with a "fresh window" notice when the warned one ends); the rolling weekly figures warn
+/// again only after dropping back under the threshold.
 /// </summary>
 public static class AiWarnings
 {
@@ -19,48 +20,37 @@ public static class AiWarnings
         var state = settings.Notified with { };
         var near = Math.Clamp(settings.NearPercent, MinNear, MaxNear);
         var now = snapshot.NowUtc;
+        var claude = snapshot.Claude;
 
-        // Claude Code. The reset notice comes first so a new window that is already past the threshold
+        // 5-hour window. The reset notice comes first so a new window that is already past the threshold
         // in the same refresh still gets its own warning.
         if (state.ClaudeWarnedEndTicks is { } warnedEnd && now >= new DateTime(warnedEnd, DateTimeKind.Utc))
         {
-            messages.Add("Claude Code: fresh 5-hour window");
+            messages.Add("Fresh 5-hour window");
             state.ClaudeWarnedEndTicks = null;
         }
-        if (snapshot.Claude?.Current is { } block &&
-            settings.ClaudeBlockBudgetTokens is { } budget && budget > 0)
+        if (claude?.Current is { } block && Percent(block.ActiveTokens, settings.ClaudeBlockBudgetTokens) is { } p5 &&
+            p5 >= near && state.ClaudeWarnedEndTicks != block.EndUtc.Ticks)
         {
-            var percent = block.ActiveTokens * 100.0 / budget;
-            if (percent >= near && state.ClaudeWarnedEndTicks != block.EndUtc.Ticks)
-            {
-                messages.Add($"Claude Code: {Math.Round(percent):0}% of this window used");
-                state.ClaudeWarnedEndTicks = block.EndUtc.Ticks;
-            }
+            messages.Add($"Usage 5h at {Math.Round(p5):0}%");
+            state.ClaudeWarnedEndTicks = block.EndUtc.Ticks;
         }
 
-        // Codex CLI: primary and secondary windows.
-        state.CodexPrimaryResetTicks = CodexWindow(snapshot.Codex?.Primary, state.CodexPrimaryResetTicks, near, now, messages);
-        state.CodexSecondaryResetTicks = CodexWindow(snapshot.Codex?.Secondary, state.CodexSecondaryResetTicks, near, now, messages);
+        state.WeeklyWarned = Rolling("Usage weekly", claude?.Week.Tokens ?? 0, settings.WeeklyBudgetTokens, state.WeeklyWarned, near, messages);
+        state.FableWarned = Rolling("Usage Fable", claude?.FableWeek.Tokens ?? 0, settings.FableBudgetTokens, state.FableWarned, near, messages);
 
         return new AiWarningResult(messages, state);
     }
 
-    /// <summary>Returns the warned reset ticks for one Codex window after this refresh.</summary>
-    private static long? CodexWindow(CodexWindowView? window, long? warnedReset, int near, DateTime now, List<string> messages)
+    /// <summary>Percent of a budget used, or null without a budget.</summary>
+    public static double? Percent(long tokens, long? budget) =>
+        budget is { } b && b > 0 ? tokens * 100.0 / b : null;
+
+    /// <summary>Returns the warned flag for one rolling figure after this refresh.</summary>
+    private static bool Rolling(string name, long tokens, long? budget, bool warned, int near, List<string> messages)
     {
-        if (warnedReset is { } warned && now >= new DateTime(warned, DateTimeKind.Utc))
-        {
-            messages.Add("Codex: limit is back");
-            warnedReset = null;
-        }
-
-        if (window is { Expired: false, ResetsAtUtc: { } reset } && window.Percent >= near && warnedReset != reset.Ticks)
-        {
-            messages.Add($"Codex: {LowerFirst(window.Label)} limit at {Math.Round(window.Percent):0}%");
-            warnedReset = reset.Ticks;
-        }
-        return warnedReset;
+        if (Percent(tokens, budget) is not { } percent || percent < near) return false;
+        if (!warned) messages.Add($"{name} at {Math.Round(percent):0}%");
+        return true;
     }
-
-    private static string LowerFirst(string s) => s.Length == 0 ? s : char.ToLowerInvariant(s[0]) + s[1..];
 }

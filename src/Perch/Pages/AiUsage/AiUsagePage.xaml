@@ -16,45 +16,66 @@
         </DockPanel>
 
         <Grid Grid.Row="1" Margin="0,4,0,0">
-            <!-- One card per source found on this PC -->
-            <UniformGrid x:Name="CardHost" Columns="2" />
+            <!-- The three usage rows: 5-hour window, last 7 days, last 7 days of Fable -->
+            <Grid x:Name="UsageList">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+            </Grid>
 
-            <!-- No source found -->
+            <!-- No Claude Code logs on this PC -->
             <StackPanel x:Name="EmptyPanel" VerticalAlignment="Center" HorizontalAlignment="Center" Visibility="Collapsed">
                 <TextBlock Style="{StaticResource PerchGlyph}" Text="&#xE99A;" FontSize="30"
                            Foreground="{DynamicResource IslandAccent}" Margin="0,0,0,8" />
-                <TextBlock Style="{StaticResource PerchBody}" Text="No AI coding tools found" FontWeight="SemiBold"
+                <TextBlock Style="{StaticResource PerchBody}" Text="No Claude Code logs found" FontWeight="SemiBold"
                            HorizontalAlignment="Center" />
                 <TextBlock Style="{StaticResource PerchCaption}" Margin="0,3,0,0" HorizontalAlignment="Center"
                            TextAlignment="Center" TextWrapping="Wrap" MaxWidth="420"
-                           Text="Perch looks for Claude Code and Codex CLI usage logs on this PC." />
+                           Text="Perch reads Claude Code's usage logs on this PC." />
             </StackPanel>
 
             <!-- Settings view -->
-            <Border x:Name="SettingsPanel" Style="{StaticResource PerchCard}" Padding="14,12" Visibility="Collapsed">
+            <Border x:Name="SettingsPanel" Style="{StaticResource PerchCard}" Padding="14,10" Visibility="Collapsed">
                 <StackPanel>
-                    <TextBlock Style="{StaticResource PerchBody}" Text="Claude Code budget per 5-hour window" FontWeight="SemiBold" />
-                    <TextBlock Style="{StaticResource PerchCaption}" Margin="0,2,0,8"
-                               Text="Input and output tokens. Examples: 2.5M, 800k. Leave empty for no bar." />
+                    <DockPanel>
+                        <TextBlock x:Name="BudgetHint" DockPanel.Dock="Right" Style="{StaticResource PerchCaption}"
+                                   Foreground="{DynamicResource IslandDanger}" VerticalAlignment="Center"
+                                   Text="Try 2.5M or 800k" Visibility="Collapsed" />
+                        <TextBlock Style="{StaticResource PerchBody}" Text="Budgets" FontWeight="SemiBold" />
+                    </DockPanel>
+                    <TextBlock Style="{StaticResource PerchCaption}" Margin="0,1,0,6"
+                               Text="Input and output tokens, for example 2.5M or 800k. Leave empty for no bar." />
 
+                    <!-- One column per row of the main view -->
                     <Grid>
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="170" />
                             <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="10" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="10" />
+                            <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
-                        <!-- Zero vertical padding: the shared PerchTextBox padding (10,7) leaves too little room in a 34 px box. -->
-                        <TextBox x:Name="BudgetBox" Style="{StaticResource PerchTextBox}" Height="34" Padding="10,0"
-                                 Background="{DynamicResource IslandCardHover}"
-                                 ToolTip="Tokens per 5-hour window" />
-                        <TextBlock x:Name="BudgetHint" Grid.Column="1" Style="{StaticResource PerchCaption}"
-                                   Foreground="{DynamicResource IslandDanger}" VerticalAlignment="Center" Margin="10,0,8,0"
-                                   Text="Try 2.5M or 800k" Visibility="Collapsed" />
-                        <Button x:Name="RescanButton" Grid.Column="2" Style="{StaticResource PerchGhostButton}"
-                                Content="Rescan now" Padding="12,6" />
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Style="{StaticResource PerchCaption}" Text="Usage 5h" Margin="2,0,0,3" />
+                        <TextBox x:Name="Budget5hBox" Grid.Row="1" Style="{StaticResource PerchTextBox}" Height="30"
+                                 Background="{DynamicResource IslandCardHover}" ToolTip="Tokens per 5-hour window" />
+
+                        <TextBlock Grid.Column="2" Style="{StaticResource PerchCaption}" Text="Usage Weekly" Margin="2,0,0,3" />
+                        <TextBox x:Name="BudgetWeekBox" Grid.Row="1" Grid.Column="2" Style="{StaticResource PerchTextBox}" Height="30"
+                                 Background="{DynamicResource IslandCardHover}" ToolTip="Tokens in the last 7 days, all models" />
+
+                        <TextBlock Grid.Column="4" Style="{StaticResource PerchCaption}" Text="Usage Fable" Margin="2,0,0,3" />
+                        <TextBox x:Name="BudgetFableBox" Grid.Row="1" Grid.Column="4" Style="{StaticResource PerchTextBox}" Height="30"
+                                 Background="{DynamicResource IslandCardHover}" ToolTip="Fable tokens in the last 7 days" />
                     </Grid>
 
-                    <DockPanel Margin="0,12,0,0">
+                    <DockPanel Margin="0,10,0,0">
                         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
                             <TextBlock Style="{StaticResource PerchCaption}" Text="Warn at" VerticalAlignment="Center" Margin="0,0,6,0" />
                             <Button x:Name="NearLowerButton" Style="{StaticResource PerchGhostButton}" Content="&#x2212;"
@@ -68,8 +89,12 @@
                                   VerticalAlignment="Center" />
                     </DockPanel>
 
-                    <TextBlock Style="{StaticResource PerchCaption}" TextWrapping="Wrap" Margin="0,14,0,0"
-                               Text="Perch reads only token counts and times from your AI tools' local logs. Nothing leaves this PC." />
+                    <DockPanel Margin="0,10,0,0">
+                        <Button x:Name="RescanButton" DockPanel.Dock="Right" Style="{StaticResource PerchGhostButton}"
+                                Content="Rescan now" Padding="12,5" />
+                        <TextBlock Style="{StaticResource PerchCaption}" TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,10,0"
+                                   Text="Perch reads only token counts and times from Claude Code's local logs. Nothing leaves this PC." />
+                    </DockPanel>
                 </StackPanel>
             </Border>
         </Grid>

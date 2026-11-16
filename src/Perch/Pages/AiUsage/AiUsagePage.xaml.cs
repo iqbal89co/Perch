@@ -1,27 +1,22 @@
-using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Controls.Primitives;
-using System.Windows.Documents;
 using System.Windows.Input;
-using System.Windows.Media;
 using System.Windows.Threading;
 using Perch.Core;
 
 namespace Perch.Pages.AiUsage;
 
 /// <summary>
-/// How much of an AI coding plan is used, from Claude Code and Codex CLI's own local logs. Only token counts,
-/// times and rate-limit percentages are read. The scan runs on a background task. The page refreshes every
-/// 30 s while shown, and every 5 min while hidden only when near-limit warnings are on.
+/// How much of a Claude plan is used, from Claude Code's own local logs, as three rows: the current 5-hour
+/// window, the last 7 days, and the last 7 days of Fable models. Only token counts, model names and times are
+/// read. The scan runs on a background task. The page refreshes every 30 s while shown, and every 5 min while
+/// hidden only when near-limit warnings are on.
 /// </summary>
 public partial class AiUsagePage : IslandPage
 {
-    /// <summary>Segoe Fluent glyph for the tab and the notices. Chosen from rendered candidates.</summary>
     private const string TabGlyph = "";
     private const string GearGlyph = "";
     private const string BackGlyph = "";
-    private const double BarHeight = 26;
 
     private static readonly TimeSpan ShownRefreshEvery = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan HiddenRefreshEvery = TimeSpan.FromMinutes(5);
@@ -30,7 +25,8 @@ public partial class AiUsagePage : IslandPage
 
     private readonly DispatcherTimer _timer = new();
     private readonly AiUsageService _service = new();
-    private AiUsageSettings _settings;
+    private readonly AiUsageSettings _settings;
+    private readonly (TextBox Box, Func<long?> Get, Action<long?> Set)[] _budgets;
     private AiSnapshot? _snapshot;
     private DateTime _lastScanUtc = DateTime.MinValue;
     private bool _busy;
@@ -50,15 +46,26 @@ public partial class AiUsagePage : IslandPage
         _settings = JsonStore.Load<AiUsageSettings>("ai_usage");
         _timer.Tick += (_, _) => OnTick();
 
+        _budgets = new (TextBox, Func<long?>, Action<long?>)[]
+        {
+            (Budget5hBox, () => _settings.ClaudeBlockBudgetTokens, v => _settings.ClaudeBlockBudgetTokens = v),
+            (BudgetWeekBox, () => _settings.WeeklyBudgetTokens, v => _settings.WeeklyBudgetTokens = v),
+            (BudgetFableBox, () => _settings.FableBudgetTokens, v => _settings.FableBudgetTokens = v),
+        };
+        foreach (var budget in _budgets)
+        {
+            var b = budget;
+            b.Box.KeyDown += (_, e) =>
+            {
+                if (e.Key != Key.Enter) return;
+                CommitBudget(b.Box, b.Get, b.Set);
+                e.Handled = true;
+            };
+            b.Box.LostFocus += (_, _) => CommitBudget(b.Box, b.Get, b.Set);
+        }
+
         SettingsButton.Click += (_, _) => ToggleSettings();
         RescanButton.Click += (_, _) => Refresh(rescan: true);
-        BudgetBox.KeyDown += (_, e) =>
-        {
-            if (e.Key != Key.Enter) return;
-            CommitBudget();
-            e.Handled = true;
-        };
-        BudgetBox.LostFocus += (_, _) => CommitBudget();
         WarnToggle.Click += (_, _) =>
         {
             _settings.WarnNearLimit = WarnToggle.IsChecked == true;
@@ -69,8 +76,7 @@ public partial class AiUsagePage : IslandPage
         NearHigherButton.Click += (_, _) => ChangeNearPercent(5);
 
         LoadSettingsControls();
-        RenderHeader();
-        // With warnings on, scan once at startup so a near-limit window can warn even if the tab is never opened.
+        RenderHeader();        // With warnings on, scan once at startup so a near-limit figure can warn even if the tab is never opened.
         if (_settings.WarnNearLimit)
         {
             ApplyTimer();
@@ -110,6 +116,8 @@ public partial class AiUsagePage : IslandPage
         RenderHeader();
         var every = _shown ? ShownRefreshEvery : HiddenRefreshEvery;
         if (DateTime.UtcNow - _lastScanUtc >= every) Refresh(rescan: false);
+        // Keeps "resets in" current between scans.
+        else if (_shown && !_settingsOpen) Render();
     }
 
     /// <summary>Scans on a background task. Ignored while a scan is running.</summary>
@@ -163,25 +171,25 @@ public partial class AiUsagePage : IslandPage
 
     private void LoadSettingsControls()
     {
-        BudgetBox.Text = _settings.ClaudeBlockBudgetTokens is { } budget ? AiFormat.Tokens(budget) : "";
+        foreach (var (box, get, _) in _budgets) box.Text = get() is { } budget ? AiFormat.Tokens(budget) : "";
         BudgetHint.Visibility = Visibility.Collapsed;
         WarnToggle.IsChecked = _settings.WarnNearLimit;
         NearText.Text = $"{NearPercent}%";
     }
 
-    private void CommitBudget()
+    private void CommitBudget(TextBox box, Func<long?> get, Action<long?> set)
     {
-        if (!AiFormat.TryParseBudget(BudgetBox.Text, out var budget))
+        if (!AiFormat.TryParseBudget(box.Text, out var budget))
         {
             BudgetHint.Visibility = Visibility.Visible;
             return;
         }
         BudgetHint.Visibility = Visibility.Collapsed;
-        if (budget == _settings.ClaudeBlockBudgetTokens) return;
+        box.Text = budget is { } b ? AiFormat.Tokens(b) : "";
+        if (budget == get()) return;
 
-        _settings.ClaudeBlockBudgetTokens = budget;
+        set(budget);
         Save();
-        BudgetBox.Text = budget is { } b ? AiFormat.Tokens(b) : "";
         Render();
         EvaluateWarnings();
     }
@@ -211,172 +219,120 @@ public partial class AiUsagePage : IslandPage
         }
         HeaderText.Text = _lastScanUtc == DateTime.MinValue
             ? ""
-            : "Updated " + AiFormat.Ago(DateTime.UtcNow - _lastScanUtc);
+            : "Claude Code · updated " + AiFormat.Ago(DateTime.UtcNow - _lastScanUtc);
     }
 
     private void Render()
     {
-        CardHost.Children.Clear();
+        UsageList.Children.Clear();
         var snapshot = _snapshot;
+        var claude = snapshot?.Claude;
 
-        var cards = new List<Border>();
-        if (snapshot?.Claude is { } claude) cards.Add(BuildClaudeCard(claude, snapshot.NowUtc));
-        if (snapshot?.Codex is { } codex) cards.Add(BuildCodexCard(codex, snapshot.NowUtc));
-        CardHost.Columns = Math.Max(1, cards.Count);
-        for (var i = 0; i < cards.Count; i++)
+        if (claude != null)
         {
-            cards[i].Margin = cards.Count > 1 && i == 0 ? new Thickness(0, 0, 8, 0) : new Thickness(0);
-            CardHost.Children.Add(cards[i]);
+            var block = claude.Current;
+            AddRow(0, "Usage 5h", block?.ActiveTokens ?? 0, _settings.ClaudeBlockBudgetTokens,
+                block != null
+                    ? $"resets in {AiFormat.Remaining(block.EndUtc - DateTime.UtcNow)} · {AiFormat.Plural(block.Messages, "message")}"
+                    : "No activity in the last 5 hours",
+                block != null ? Breakdown(block.ModelTokens) : null);
+
+            AddRow(1, "Usage Weekly", claude.Week.Tokens, _settings.WeeklyBudgetTokens,
+                $"last 7 days · {AiFormat.Plural(claude.Week.Messages, "message")}",
+                Breakdown(claude.Week.ModelTokens));
+
+            AddRow(2, "Usage Fable", claude.FableWeek.Tokens, _settings.FableBudgetTokens,
+                claude.FableWeek.Messages > 0
+                    ? $"Fable models, last 7 days · {AiFormat.Plural(claude.FableWeek.Messages, "message")}"
+                    : "No Fable use in the last 7 days",
+                Breakdown(claude.FableWeek.ModelTokens));
         }
 
-        CardHost.Visibility = _settingsOpen ? Visibility.Collapsed : Visibility.Visible;
-        EmptyPanel.Visibility = !_settingsOpen && snapshot != null && cards.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        UsageList.Visibility = _settingsOpen ? Visibility.Collapsed : Visibility.Visible;
+        EmptyPanel.Visibility = !_settingsOpen && snapshot != null && claude == null ? Visibility.Visible : Visibility.Collapsed;
         SettingsPanel.Visibility = _settingsOpen ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    private Border BuildClaudeCard(ClaudeSummary summary, DateTime nowUtc)
+    /// <summary>
+    /// One row: the name and a short caption on the left; on the right the percentage of the budget (or the
+    /// token count when there is no budget); a bar along the bottom when there is a budget.
+    /// </summary>
+    private void AddRow(int index, string name, long tokens, long? budget, string caption, string? tooltip)
     {
-        var block = summary.Current;
-        var stack = new StackPanel();
-        stack.Children.Add(Label("Claude Code", "PerchTitle", 14));
-        stack.Children.Add(Caption("This 5-hour window", margin: new Thickness(0, 1, 0, 0)));
+        var percent = AiWarnings.Percent(tokens, budget);
+        var danger = percent >= NearPercent;
 
-        var big = new TextBlock { Style = (Style)FindResource("PerchBody"), Margin = new Thickness(0, 6, 0, 0) };
-        big.Inlines.Add(new Run(AiFormat.Tokens(block?.ActiveTokens ?? 0)) { FontSize = 26, FontWeight = FontWeights.Bold });
-        big.Inlines.Add(RunWithResource(" tokens", 12, "IslandSubtle"));
-        if (block != null) big.ToolTip = BlockDetails(block);
-        stack.Children.Add(big);
+        var grid = new Grid { VerticalAlignment = VerticalAlignment.Center };
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
-        stack.Children.Add(Caption(block != null
-            ? $"resets in {AiFormat.Remaining(block.EndUtc - nowUtc)} · {AiFormat.Plural(block.Messages, "message")} · {AiFormat.Tokens(block.CacheTokens)} cached"
-            : "No activity in the last 5 hours"));
-
-        if (_settings.ClaudeBlockBudgetTokens is { } budget && budget > 0)
+        var title = new TextBlock
         {
-            var fraction = (double)(block?.ActiveTokens ?? 0) / budget;
-            stack.Children.Add(Bar(Math.Min(1, fraction), fraction * 100 >= NearPercent, new Thickness(0, 6, 0, 0)));
-            stack.Children.Add(Caption($"{AiFormat.Percent(fraction)} of {AiFormat.Tokens(budget)} budget"));
+            Text = name,
+            Style = (Style)FindResource("PerchTitle"),
+            FontSize = 14,
+            FontWeight = FontWeights.SemiBold,
+            VerticalAlignment = VerticalAlignment.Bottom,
+        };
+        grid.Children.Add(title);
+
+        var value = new TextBlock
+        {
+            Text = percent is { } p ? $"{Math.Round(p):0}%" : AiFormat.Tokens(tokens),
+            Style = (Style)FindResource("PerchTitle"),
+            FontSize = 20,
+            FontWeight = FontWeights.Bold,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            VerticalAlignment = VerticalAlignment.Bottom,
+        };
+        if (percent != null) value.SetResourceReference(TextBlock.ForegroundProperty, danger ? "IslandDanger" : "IslandAccent");
+        Grid.SetColumn(value, 1);
+        grid.Children.Add(value);
+
+        var left = Caption(caption);
+        Grid.SetRow(left, 1);
+        grid.Children.Add(left);
+
+        var right = Caption(budget is { } b && b > 0 ? $"{AiFormat.Tokens(tokens)} of {AiFormat.Tokens(b)}" : "tokens");
+        right.HorizontalAlignment = HorizontalAlignment.Right;
+        right.Margin = new Thickness(12, 0, 0, 0);
+        Grid.SetRow(right, 1);
+        Grid.SetColumn(right, 1);
+        grid.Children.Add(right);
+
+        if (percent is { } fraction)
+        {
+            var bar = Bar(fraction / 100, danger, new Thickness(0, 7, 0, 0));
+            Grid.SetRow(bar, 2);
+            Grid.SetColumnSpan(bar, 2);
+            grid.Children.Add(bar);
         }
 
-        if (block?.TopModel is { } model)
-            stack.Children.Add(Caption($"Mostly {model}", margin: new Thickness(0, 4, 0, 0)));
-
-        stack.Children.Add(Caption($"LAST 7 DAYS · {AiFormat.Tokens(summary.Week.Sum())} TOTAL", size: 10, semibold: true,
-            margin: new Thickness(0, 6, 0, 0)));
-        stack.Children.Add(WeekChart(summary.Week));
-
-        return Card(stack);
-    }
-
-    /// <summary>Tooltip on the window total: when it started and the split by model.</summary>
-    private string BlockDetails(ClaudeBlock block)
-    {
-        var zone = TimeZoneInfo.Local;
-        var start = TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(block.StartUtc, DateTimeKind.Utc), zone);
-        var lines = new List<string> { $"Window started {start:HH:mm}, cache {AiFormat.Tokens(block.CacheTokens)} tokens" };
-        lines.AddRange(block.ModelTokens
-            .OrderByDescending(kv => kv.Value)
-            .Select(kv => $"{kv.Key}: {AiFormat.Tokens(kv.Value)}"));
-        return string.Join(Environment.NewLine, lines);
-    }
-
-    private Border BuildCodexCard(CodexSummary summary, DateTime nowUtc)
-    {
-        var stack = new StackPanel();
-        stack.Children.Add(Label("Codex CLI", "PerchTitle", 14));
-        stack.Children.Add(Caption(summary.LimitsSeenUtc is { } seen
-            ? "Limits as of " + AiFormat.Ago(nowUtc - seen)
-            : "No limit data yet", margin: new Thickness(0, 1, 0, 0)));
-
-        foreach (var window in new[] { summary.Primary, summary.Secondary })
+        var card = new Border
         {
-            if (window == null) continue;
-            var percent = window.Percent / 100.0;
-            var danger = window.Percent >= NearPercent;
-
-            var header = new DockPanel { Margin = new Thickness(0, 10, 0, 0) };
-            var value = new TextBlock
-            {
-                Text = $"{Math.Round(window.Percent):0}%",
-                Style = (Style)FindResource("PerchBody"),
-                FontWeight = FontWeights.SemiBold,
-            };
-            value.SetResourceReference(TextBlock.ForegroundProperty, danger ? "IslandDanger" : "IslandAccent");
-            DockPanel.SetDock(value, Dock.Right);
-            header.Children.Add(value);
-            header.Children.Add(new TextBlock { Text = window.Label, Style = (Style)FindResource("PerchBody") });
-            stack.Children.Add(header);
-
-            stack.Children.Add(Bar(percent, danger, new Thickness(0, 5, 0, 0)));
-            stack.Children.Add(Caption(ResetText(window, nowUtc)));
-        }
-
-        stack.Children.Add(Caption($"Today {AiFormat.Tokens(summary.TodayTokens)} tokens", margin: new Thickness(0, 10, 0, 0)));
-        return Card(stack);
+            Style = (Style)FindResource("PerchCard"),
+            Padding = new Thickness(14, 8, 14, 8),
+            Margin = new Thickness(0, index == 0 ? 0 : 3, 0, index == 2 ? 0 : 3),
+            Child = grid,
+            ToolTip = tooltip,
+        };
+        Grid.SetRow(card, index);
+        UsageList.Children.Add(card);
     }
 
-    private string ResetText(CodexWindowView window, DateTime nowUtc)
-    {
-        if (window.Expired) return "window reset";
-        if (window.ResetsAtUtc is not { } reset) return "";
-        return "resets " + AiFormat.ResetClock(reset, nowUtc, TimeZoneInfo.Local, Ctx.Settings.Use24h);
-    }
-
-    /// <summary>Seven thin bars, oldest first, with the weekday initial under each. Today is accented.</summary>
-    private UIElement WeekChart(long[] days)
-    {
-        var grid = new UniformGrid { Columns = days.Length, Height = BarHeight + 14 };
-        var max = days.Length == 0 ? 0 : days.Max();
-        var today = DateTime.Today;
-        for (var i = 0; i < days.Length; i++)
-        {
-            var date = today.AddDays(i - (days.Length - 1));
-            var height = max <= 0 ? 2 : Math.Max(2, days[i] * BarHeight / max);
-
-            var column = new Grid();
-            column.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-            column.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-
-            // A faint full-height track, so a quiet day still reads as a slot rather than a stray dash.
-            var track = new Border
-            {
-                Width = 12,
-                Height = BarHeight,
-                CornerRadius = new CornerRadius(3),
-                VerticalAlignment = VerticalAlignment.Bottom,
-                HorizontalAlignment = HorizontalAlignment.Center,
-            };
-            track.SetResourceReference(Border.BackgroundProperty, "IslandCardHover");
-            column.Children.Add(track);
-
-            var bar = new Border
-            {
-                Width = 12,
-                Height = height,
-                CornerRadius = new CornerRadius(3),
-                VerticalAlignment = VerticalAlignment.Bottom,
-                HorizontalAlignment = HorizontalAlignment.Center,
-                ToolTip = $"{date:ddd d MMM}: {AiFormat.Tokens(days[i])} tokens",
-            };
-            bar.SetResourceReference(Border.BackgroundProperty, i == days.Length - 1 ? "IslandAccent" : "IslandAccentSoft");
-            column.Children.Add(bar);
-
-            var initial = new TextBlock
-            {
-                Text = CultureInfo.CurrentCulture.DateTimeFormat.GetShortestDayName(date.DayOfWeek)[..1],
-                Style = (Style)FindResource("PerchCaption"),
-                FontSize = 10,
-                HorizontalAlignment = HorizontalAlignment.Center,
-            };
-            Grid.SetRow(initial, 1);
-            column.Children.Add(initial);
-            grid.Children.Add(column);
-        }
-        return grid;
-    }
+    /// <summary>Tooltip: tokens per model, largest first. Null when there is nothing to split.</summary>
+    private static string? Breakdown(IReadOnlyDictionary<string, long> models) =>
+        models.Count == 0
+            ? null
+            : string.Join(Environment.NewLine, models
+                .OrderByDescending(kv => kv.Value)
+                .Select(kv => $"{kv.Key}: {AiFormat.Tokens(kv.Value)}"));
 
     /// <summary>A thin rounded bar: the track is IslandCardHover, the fill is accent (or danger when near the limit).</summary>
-    private UIElement Bar(double fraction, bool danger, Thickness margin)
+    private static FrameworkElement Bar(double fraction, bool danger, Thickness margin)
     {
         var f = Math.Clamp(fraction, 0, 1);
         var grid = new Grid { Height = 5, Margin = margin };
@@ -395,38 +351,12 @@ public partial class AiUsagePage : IslandPage
         return grid;
     }
 
-    private Border Card(UIElement content) => new()
-    {
-        Style = (Style)FindResource("PerchCard"),
-        Padding = new Thickness(12, 10, 12, 8),
-        Child = content,
-    };
-
-    private TextBlock Label(string text, string style, double size) => new()
+    private TextBlock Caption(string text) => new()
     {
         Text = text,
-        Style = (Style)FindResource(style),
-        FontSize = size,
-        FontWeight = FontWeights.SemiBold,
+        Style = (Style)FindResource("PerchCaption"),
+        FontSize = 11.5,
+        Margin = new Thickness(0, 2, 0, 0),
+        TextTrimming = TextTrimming.CharacterEllipsis,
     };
-
-    private TextBlock Caption(string text, double size = 11.5, bool semibold = false, Thickness? margin = null)
-    {
-        var block = new TextBlock
-        {
-            Text = text,
-            Style = (Style)FindResource("PerchCaption"),
-            FontSize = size,
-            Margin = margin ?? new Thickness(0),
-        };
-        if (semibold) block.FontWeight = FontWeights.SemiBold;
-        return block;
-    }
-
-    private static Run RunWithResource(string text, double size, string resourceKey)
-    {
-        var run = new Run(text) { FontSize = size };
-        run.SetResourceReference(TextElement.ForegroundProperty, resourceKey);
-        return run;
-    }
 }

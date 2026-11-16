@@ -68,45 +68,6 @@ public sealed class AiUsageParserTests
         Assert.Null(AiLogParsers.ParseClaude(Bytes("""{"type":"assistant","message":{"usage":{"input_tokens":1}}}""")));
     }
 
-    [Fact]
-    public void Codex_token_event_sums_last_usage_and_reads_relative_reset()
-    {
-        var line = """
-            {"timestamp":"2026-11-14T10:00:00Z","type":"event_msg","payload":{"type":"token_count",
-             "info":{"last_token_usage":{"input_tokens":1000,"cached_input_tokens":200,"output_tokens":50,"reasoning_output_tokens":10,"total_tokens":1060}},
-             "rate_limits":{"primary":{"used_percent":12.0,"window_minutes":300,"resets_in_seconds":1234},
-                            "secondary":{"used_percent":40,"window_minutes":10080,"resets_at":1763200000}}}}
-            """;
-        var e = AiLogParsers.ParseCodex(Bytes(line.Replace("\n", " ")));
-        Assert.NotNull(e);
-        Assert.Equal(1050, e!.Tokens);
-        Assert.NotNull(e.Limits);
-        var t0 = new DateTime(2026, 11, 14, 10, 0, 0, DateTimeKind.Utc);
-        Assert.Equal(12.0, e.Limits!.Primary!.UsedPercent);
-        Assert.Equal(300, e.Limits.Primary.WindowMinutes);
-        Assert.Equal(t0.AddSeconds(1234), e.Limits.Primary.ResetsAtUtc);
-        Assert.Equal(40.0, e.Limits.Secondary!.UsedPercent);
-        Assert.Equal(DateTimeOffset.FromUnixTimeSeconds(1763200000).UtcDateTime, e.Limits.Secondary.ResetsAtUtc);
-    }
-
-    [Fact]
-    public void Codex_event_with_null_info_keeps_only_limits_and_missing_fields_are_tolerated()
-    {
-        var line = """{"timestamp":"2026-11-14T10:00:00Z","type":"event_msg","payload":{"type":"token_count","info":null,"rate_limits":{"primary":{"used_percent":5,"window_minutes":300}}}}""";
-        var e = AiLogParsers.ParseCodex(Bytes(line));
-        Assert.NotNull(e);
-        Assert.Equal(0, e!.Tokens);
-        Assert.Null(e.Limits!.Primary!.ResetsAtUtc);
-        Assert.Null(e.Limits.Secondary);
-    }
-
-    [Fact]
-    public void Codex_events_without_tokens_or_limits_and_other_types_are_ignored()
-    {
-        Assert.Null(AiLogParsers.ParseCodex(Bytes("""{"timestamp":"2026-11-14T10:00:00Z","type":"event_msg","payload":{"type":"token_count","info":null,"rate_limits":null}}""")));
-        Assert.Null(AiLogParsers.ParseCodex(Bytes("""{"timestamp":"2026-11-14T10:00:00Z","type":"response_item","payload":{"type":"message","token_count":1}}""")));
-        Assert.Null(AiLogParsers.ParseCodex(Bytes("""{"type":"event_msg","payload":{"type":"token_count"""))); // malformed
-    }
 }
 
 public sealed class AiUsageFileTests : IDisposable
@@ -196,12 +157,12 @@ public sealed class AiUsageFileTests : IDisposable
         System.IO.File.WriteAllText(Path.Combine(sub, "notes.txt"), ClaudeLine(2) + "\n");
 
         var scanner = new AiLogScanner();
-        var output = scanner.Scan(new[] { root }, Array.Empty<string>());
+        var output = scanner.Scan(new[] { root });
         Assert.Equal(2, output.Files);
         Assert.Equal(2, output.Claude.Count);
 
         System.IO.File.Delete(Path.Combine(sub, "agent-1.jsonl"));
-        output = scanner.Scan(new[] { root }, Array.Empty<string>());
+        output = scanner.Scan(new[] { root });
         Assert.Equal(1, output.Files);
         Assert.Single(output.Claude);
     }
@@ -216,13 +177,13 @@ public sealed class AiUsageFileTests : IDisposable
 
         var scanner = new AiLogScanner();
         Assert.True(scanner.IsEmpty);
-        var first = scanner.Scan(new[] { root }, Array.Empty<string>());
+        var first = scanner.Scan(new[] { root });
         Assert.False(scanner.IsEmpty);
         Assert.Single(first.Claude);
 
         var appended = ClaudeLine(1) + "\n";
         System.IO.File.AppendAllText(path, appended);
-        var second = scanner.Scan(new[] { root }, Array.Empty<string>());
+        var second = scanner.Scan(new[] { root });
         Assert.Equal(2, second.Claude.Count);
         Assert.Equal(Encoding.UTF8.GetByteCount(appended), second.BytesRead);
 
@@ -231,21 +192,15 @@ public sealed class AiUsageFileTests : IDisposable
     }
 
     [Fact]
-    public void Scanner_reads_codex_sessions_and_dedupe_removes_repeated_claude_lines()
+    public void Dedupe_removes_repeated_claude_lines_read_by_the_scanner()
     {
-        var sessions = Path.Combine(_dir, "sessions", "2026", "11", "14");
-        Directory.CreateDirectory(sessions);
-        var codex = """{"timestamp":"2026-11-14T10:00:00Z","type":"event_msg","payload":{"type":"token_count","info":{"last_token_usage":{"input_tokens":10,"output_tokens":5}}}}""";
-        System.IO.File.WriteAllText(Path.Combine(sessions, "rollout.jsonl"), codex + "\n" + codex + "\n");
-
         var claudeRoot = Path.Combine(_dir, "projects");
         Directory.CreateDirectory(claudeRoot);
         // One message logged three times (one line per content block), identical usage.
         var same = ClaudeLine(5);
         System.IO.File.WriteAllText(Path.Combine(claudeRoot, "dup.jsonl"), same + "\n" + same + "\n" + same + "\n");
 
-        var output = new AiLogScanner().Scan(new[] { claudeRoot }, new[] { Path.Combine(_dir, "sessions") });
-        Assert.Equal(2, output.Codex.Count);
+        var output = new AiLogScanner().Scan(new[] { claudeRoot });
         Assert.Equal(3, output.Claude.Count);
         Assert.Single(AiUsageMath.Dedupe(output.Claude));
     }
@@ -287,18 +242,6 @@ public sealed class AiUsageRootsTests : IDisposable
         Assert.Equal(new[] { Path.Combine(a, "projects") }, forced);
     }
 
-    [Fact]
-    public void Codex_home_or_default_sessions_folder_is_used_when_it_exists()
-    {
-        Assert.Empty(AiRoots.Codex(null, null, _home));
-        Directory.CreateDirectory(Path.Combine(_home, ".codex", "sessions"));
-        Assert.Single(AiRoots.Codex(null, null, _home));
-
-        var home = Path.Combine(_home, "custom");
-        Directory.CreateDirectory(Path.Combine(home, "sessions"));
-        Assert.Equal(new[] { Path.Combine(home, "sessions") }, AiRoots.Codex(null, home, _home));
-        Assert.Empty(AiRoots.Codex(Path.Combine(_home, "nothing-here"), home, _home));
-    }
 }
 
 public sealed class AiUsageMathTests
@@ -373,96 +316,64 @@ public sealed class AiUsageMathTests
     }
 
     [Fact]
-    public void Daily_tokens_bucket_by_local_day_and_ignore_items_outside_the_week()
+    public void Totals_cover_the_span_and_split_by_model()
     {
-        var now = At(12);
-        var items = new (DateTime, long)[]
+        var entries = new[]
         {
-            (At(1), 5),                                  // today
-            (new DateTime(2026, 11, 8, 23, 59, 0, DateTimeKind.Utc), 3), // six days ago, the oldest day shown
-            (new DateTime(2026, 11, 7, 12, 0, 0, DateTimeKind.Utc), 100), // seven days ago: out
-            (new DateTime(2026, 11, 15, 0, 30, 0, DateTimeKind.Utc), 100), // tomorrow: out
+            E(At(9), "claude-opus-5-5", 10, 5),
+            E(At(10), "claude-fable-5-2", 100, 20),
+            E(At(11), "claude-fable-5-2", 1, 1),
+            E(At(13), "claude-opus-5-5", 1000, 1000), // after the span
         };
-        var week = AiUsageMath.DailyTokens(items, now, Utc, 7);
-        Assert.Equal(7, week.Length);
-        Assert.Equal(3, week[0]);
-        Assert.Equal(5, week[6]);
-        Assert.Equal(8, week.Sum());
-    }
+        var all = AiUsageMath.Total(entries, At(9), At(12));
+        Assert.Equal(122, all.Tokens);     // 09:00 is the open start of (09:00, 12:00]
+        Assert.Equal(2, all.Messages);
+        Assert.Equal(122, all.ModelTokens["claude-fable-5-2"]);
 
-    [Fact]
-    public void Daily_tokens_respect_the_local_zone()
-    {
-        // 23:30 UTC on the 14th is already the 15th at UTC+2.
-        var zone = TimeZoneInfo.CreateCustomTimeZone("plus2", TimeSpan.FromHours(2), "plus2", "plus2");
-        var now = new DateTime(2026, 11, 14, 23, 30, 0, DateTimeKind.Utc);
-        var week = AiUsageMath.DailyTokens(new (DateTime, long)[] { (now, 7) }, now, zone, 2);
-        Assert.Equal(7, week[1]);
-        Assert.Equal(0, week[0]);
-    }
+        var fable = AiUsageMath.Total(entries, At(0), At(12), e => AiUsageMath.IsFable(e.Model));
+        Assert.Equal(122, fable.Tokens);
+        Assert.Single(fable.ModelTokens);
 
-    [Fact]
-    public void Codex_uses_the_newest_limits_by_timestamp_not_file_order()
-    {
-        var newer = new RateLimits(At(12), new RateWindow(50, 300, At(14)), null);
-        var older = new RateLimits(At(11), new RateWindow(20, 300, At(13)), null);
-        var events = new List<CodexEvent>
-        {
-            new(At(12), 10, newer),
-            new(At(11), 10, older),
-            new(At(11, 30), 25, null),
-        };
-        var summary = AiUsageMath.SummarizeCodex(events, At(12, 30), Utc);
-        Assert.NotNull(summary.Primary);
-        Assert.Equal(50, summary.Primary!.Percent);
-        Assert.Equal("5-hour", summary.Primary.Label);
-        Assert.Equal(At(12), summary.LimitsSeenUtc);
-        Assert.Equal(45, summary.TodayTokens);
-    }
-
-    [Fact]
-    public void A_window_past_its_reset_reads_zero_until_new_usage()
-    {
-        var expired = AiUsageMath.View(new RateWindow(90, 10080, At(11)), At(12));
-        Assert.NotNull(expired);
-        Assert.True(expired!.Expired);
-        Assert.Equal(0, expired.Percent);
-        Assert.Equal("Weekly", expired.Label);
-
-        var live = AiUsageMath.View(new RateWindow(40, 1440, At(20)), At(12));
-        Assert.False(live!.Expired);
-        Assert.Equal(40, live.Percent);
-        Assert.Equal("1-day", live.Label);
+        Assert.Same(UsageTotal.Empty, AiUsageMath.Total(entries, At(14), At(15)));
     }
 
     [Theory]
-    [InlineData(300, "5-hour")]
-    [InlineData(10080, "Weekly")]
-    [InlineData(120, "2-hour")]
-    [InlineData(2880, "2-day")]
-    [InlineData(45, "45-min")]
-    public void Window_labels(int minutes, string expected) => Assert.Equal(expected, AiUsageMath.WindowLabel(minutes));
+    [InlineData("claude-fable-5-2", true)]
+    [InlineData("Fable", true)]
+    [InlineData("claude-opus-5-5", false)]
+    [InlineData("claude-haiku-5-5", false)]
+    public void Fable_models_are_recognised(string model, bool expected) => Assert.Equal(expected, AiUsageMath.IsFable(model));
 
     [Fact]
-    public void Summarize_claude_fills_week_and_last_activity()
+    public void Summary_has_the_open_window_the_last_seven_days_and_fable_alone()
     {
         var now = At(12);
         var summary = AiUsageMath.SummarizeClaude(new[]
         {
-            E(At(11), "a", 10, 10, "k1"),
-            E(At(11), "a", 10, 10, "k1"),  // duplicate of the same message
-        }, now, Utc);
-        Assert.Equal(20, summary.Week[6]);
+            E(At(11), "claude-opus-5-5", 10, 10, "k1"),
+            E(At(11), "claude-opus-5-5", 10, 10, "k1"),                  // duplicate of the same message
+            E(now.AddDays(-3), "claude-fable-5-2", 300, 100, "k2"),       // this week, before the 5-hour window
+            E(now.AddDays(-7).AddMinutes(1), "claude-fable-5-2", 1, 1, "k3"), // just inside 7 days
+            E(now.AddDays(-7), "claude-opus-5-5", 5000, 5000, "k4"),      // exactly 7 days ago: out
+        }, now);
+
+        Assert.NotNull(summary.Current);
+        Assert.Equal(At(11), summary.Current!.StartUtc);
+        Assert.Equal(20, summary.Current.ActiveTokens);
+        Assert.Equal(422, summary.Week.Tokens);
+        Assert.Equal(3, summary.Week.Messages);
+        Assert.Equal(402, summary.FableWeek.Tokens);
+        Assert.Equal(2, summary.FableWeek.Messages);
         Assert.Equal(At(11), summary.LastActivityUtc);
-        Assert.NotNull(summary.Current); // 11:00 starts a window that runs to 16:00
     }
 
     [Fact]
-    public void Summarize_claude_reports_the_open_window()
+    public void Summary_without_recent_use_has_no_window_and_empty_weeks()
     {
-        var summary = AiUsageMath.SummarizeClaude(new[] { E(At(11), "a", 10, 10, "k1") }, At(12), Utc);
-        Assert.NotNull(summary.Current);
-        Assert.Equal(At(11), summary.Current!.StartUtc);
+        var summary = AiUsageMath.SummarizeClaude(new[] { E(At(1).AddDays(-10), "claude-fable-5-2", 10, 10, "k1") }, At(12));
+        Assert.Null(summary.Current);
+        Assert.Equal(0, summary.Week.Tokens);
+        Assert.Equal(0, summary.FableWeek.Tokens);
     }
 }
 
@@ -540,14 +451,14 @@ public sealed class AiUsageWarningTests
         new(new DateTime(2026, 11, 14, 10, 0, 0, DateTimeKind.Utc), new DateTime(2026, 11, 14, 15, 0, 0, DateTimeKind.Utc),
             active / 2, active - active / 2, 0, 0, 4, new Dictionary<string, long> { ["claude-opus-5-5"] = active });
 
-    private static AiSnapshot Snap(DateTime now, ClaudeBlock? block = null, CodexWindowView? primary = null) =>
-        new(now,
-            new ClaudeSummary(block, new long[7], now),
-            primary == null ? null : new CodexSummary(primary, null, now, 0),
-            Stats);
+    private static UsageTotal Week(long tokens) =>
+        tokens == 0 ? UsageTotal.Empty : new UsageTotal(tokens, 1, new Dictionary<string, long> { ["m"] = tokens });
+
+    private static AiSnapshot Snap(DateTime now, ClaudeBlock? block = null, long week = 0, long fable = 0) =>
+        new(now, new ClaudeSummary(block, Week(week), Week(fable), now), Stats);
 
     [Fact]
-    public void Claude_warns_once_per_window_when_the_budget_passes_the_threshold()
+    public void Five_hour_window_warns_once_when_the_budget_passes_the_threshold()
     {
         var settings = new AiUsageSettings { ClaudeBlockBudgetTokens = 1000, NearPercent = 80 };
 
@@ -555,7 +466,7 @@ public sealed class AiUsageWarningTests
         Assert.Empty(below.Messages);
 
         var crossed = AiWarnings.Evaluate(Snap(Now, Block(820)), settings);
-        Assert.Equal(new[] { "Claude Code: 82% of this window used" }, crossed.Messages);
+        Assert.Equal(new[] { "Usage 5h at 82%" }, crossed.Messages);
         settings.Notified = crossed.State;
 
         var again = AiWarnings.Evaluate(Snap(Now.AddMinutes(5), Block(900)), settings);
@@ -563,48 +474,45 @@ public sealed class AiUsageWarningTests
     }
 
     [Fact]
-    public void Claude_says_fresh_window_once_the_warned_window_ends()
+    public void Five_hour_window_says_fresh_once_the_warned_window_ends()
     {
         var settings = new AiUsageSettings { ClaudeBlockBudgetTokens = 1000, NearPercent = 80 };
         var warned = AiWarnings.Evaluate(Snap(Now, Block(900)), settings);
         settings.Notified = warned.State;
 
         var later = AiWarnings.Evaluate(Snap(Now.AddHours(3.5)), settings);
-        Assert.Equal(new[] { "Claude Code: fresh 5-hour window" }, later.Messages);
+        Assert.Equal(new[] { "Fresh 5-hour window" }, later.Messages);
         Assert.Null(later.State.ClaudeWarnedEndTicks);
     }
 
     [Fact]
-    public void Claude_budget_is_required_for_claude_warnings()
+    public void A_budget_is_required_for_warnings()
     {
-        var result = AiWarnings.Evaluate(Snap(Now, Block(999_999)), new AiUsageSettings { ClaudeBlockBudgetTokens = null });
+        var result = AiWarnings.Evaluate(Snap(Now, Block(999_999), week: 999_999, fable: 999_999), new AiUsageSettings());
         Assert.Empty(result.Messages);
     }
 
     [Fact]
-    public void Codex_warns_once_and_then_says_the_limit_is_back()
+    public void Weekly_and_fable_warn_once_and_again_only_after_dropping_back()
     {
-        var reset = Now.AddHours(1);
-        var settings = new AiUsageSettings { NearPercent = 80 };
-        var hot = new CodexWindowView("5-hour", 85, reset, false);
+        var settings = new AiUsageSettings { WeeklyBudgetTokens = 10_000, FableBudgetTokens = 1000, NearPercent = 80 };
 
-        var first = AiWarnings.Evaluate(Snap(Now, primary: hot), settings);
-        Assert.Equal(new[] { "Codex: 5-hour limit at 85%" }, first.Messages);
+        var first = AiWarnings.Evaluate(Snap(Now, week: 8500, fable: 950), settings);
+        Assert.Equal(new[] { "Usage weekly at 85%", "Usage Fable at 95%" }, first.Messages);
         settings.Notified = first.State;
 
-        var repeat = AiWarnings.Evaluate(Snap(Now.AddMinutes(10), primary: hot), settings);
+        var repeat = AiWarnings.Evaluate(Snap(Now.AddHours(1), week: 9000, fable: 990), settings);
         Assert.Empty(repeat.Messages);
+        settings.Notified = repeat.State;
 
-        var back = AiWarnings.Evaluate(Snap(reset.AddMinutes(1), primary: new CodexWindowView("5-hour", 0, reset, true)), settings);
-        Assert.Equal(new[] { "Codex: limit is back" }, back.Messages);
-        Assert.Null(back.State.CodexPrimaryResetTicks);
-    }
+        // Old usage rolls out of the 7 days: the flags clear quietly, and a later climb warns again.
+        var cooled = AiWarnings.Evaluate(Snap(Now.AddDays(2), week: 4000, fable: 950), settings);
+        Assert.Empty(cooled.Messages);
+        Assert.False(cooled.State.WeeklyWarned);
+        Assert.True(cooled.State.FableWarned);
+        settings.Notified = cooled.State;
 
-    [Fact]
-    public void Codex_below_threshold_stays_quiet()
-    {
-        var result = AiWarnings.Evaluate(Snap(Now, primary: new CodexWindowView("Weekly", 40, Now.AddDays(3), false)),
-            new AiUsageSettings { NearPercent = 80 });
-        Assert.Empty(result.Messages);
+        var climbed = AiWarnings.Evaluate(Snap(Now.AddDays(3), week: 8100, fable: 960), settings);
+        Assert.Equal(new[] { "Usage weekly at 81%" }, climbed.Messages);
     }
 }
