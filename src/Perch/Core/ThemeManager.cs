@@ -146,13 +146,21 @@ public static class ThemeManager
             group.Children.Add(new GeometryDrawing(radial, null, new EllipseGeometry(new Point(x, y), r, r)));
         }
 
-        var brush = new DrawingBrush(group)
+        // Rasterise once into a small bitmap and stretch that: sampling a bitmap is far cheaper than redrawing
+        // radial gradients every frame behind animated content (the soft glows hide the upscaling).
+        const int width = 320, height = 160;
+        var visual = new DrawingVisual();
+        using (var dc = visual.RenderOpen())
         {
-            Stretch = Stretch.Fill,
-            Viewbox = new Rect(0, 0, 1, 1),
-            ViewboxUnits = BrushMappingMode.Absolute,
-        };
-        RenderOptions.SetCachingHint(brush, CachingHint.Cache);
+            dc.PushTransform(new ScaleTransform(width, height));
+            dc.DrawDrawing(group);
+        }
+        var bitmap = new System.Windows.Media.Imaging.RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);
+        bitmap.Render(visual);
+        bitmap.Freeze();
+
+        var brush = new ImageBrush(bitmap) { Stretch = Stretch.Fill };
+        RenderOptions.SetBitmapScalingMode(brush, BitmapScalingMode.Linear);
         brush.Freeze();
         return brush;
     }
