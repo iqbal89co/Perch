@@ -516,3 +516,135 @@ public sealed class AiUsageWarningTests
         Assert.Equal(new[] { "Usage weekly at 81%" }, climbed.Messages);
     }
 }
+
+public sealed class ClaudePlanTests
+{
+    private static readonly DateTime Now = new(2026, 11, 18, 2, 0, 0, DateTimeKind.Utc);
+
+    // Shape of the real response (trimmed): a "limits" list plus the older per-window fields.
+    private const string Response = """
+        {"five_hour":{"utilization":16.0,"resets_at":"2026-11-18T05:50:00.198517+00:00"},
+         "seven_day":{"utilization":3.0,"resets_at":"2026-11-23T21:00:00.198538+00:00"},
+         "seven_day_opus":null,
+         "limits":[
+           {"kind":"session","group":"session","percent":16,"severity":"normal","resets_at":"2026-11-18T05:50:00.198517+00:00","scope":null,"is_active":true},
+           {"kind":"weekly_all","group":"weekly","percent":3,"severity":"normal","resets_at":"2026-11-23T21:00:00.198538+00:00","scope":null,"is_active":false},
+           {"kind":"weekly_scoped","group":"weekly","percent":91,"severity":"warning","resets_at":"2026-11-23T21:00:00+00:00","scope":{"model":{"display_name":"Fable"}}}
+         ]}
+        """;
+
+    [Fact]
+    public void Limits_list_becomes_rows_named_like_usage()
+    {
+        var rows = ClaudePlanParser.Parse(Response);
+
+        Assert.Equal(new[] { "Usage 5h", "Usage weekly", "Usage Fable" }, rows.Select(r => r.Label));
+        Assert.Equal(new[] { 16.0, 3.0, 91.0 }, rows.Select(r => r.Percent));
+        Assert.Equal(new DateTime(2026, 11, 18, 5, 50, 0, DateTimeKind.Utc), rows[0].ResetsAtUtc!.Value, TimeSpan.FromSeconds(1));
+        Assert.True(rows[0].IsSession);
+        Assert.True(rows[1].IsWeeklyAll);
+        Assert.True(rows[2].IsFable);
+        Assert.False(rows[0].Elevated);
+        Assert.True(rows[2].Elevated);
+    }
+
+    [Fact]
+    public void Older_fields_are_used_when_there_is_no_limits_list()
+    {
+        var rows = ClaudePlanParser.Parse("""
+            {"five_hour":{"utilization":42.5,"resets_at":"2026-11-18T05:50:00Z"},
+             "seven_day":{"utilization":7,"resets_at":null},"seven_day_opus":{"utilization":12,"resets_at":null},"seven_day_sonnet":null}
+            """);
+
+        Assert.Equal(new[] { "Usage 5h", "Usage weekly", "Usage Opus" }, rows.Select(r => r.Label));
+        Assert.Equal(42.5, rows[0].Percent);
+        Assert.Null(rows[1].ResetsAtUtc);
+    }
+
+    [Fact]
+    public void Odd_entries_are_skipped_and_unknown_kinds_still_get_a_name()
+    {
+        var rows = ClaudePlanParser.Parse("""
+            {"limits":[{"kind":"session"},{"kind":"weekly_scoped","percent":"x"},"junk",
+                       {"kind":"daily_extra","percent":5,"display_name":"Extra"},{"kind":"monthly_cap","percent":9}]}
+            """);
+
+        Assert.Equal(new[] { "Usage Extra", "Usage monthly cap" }, rows.Select(r => r.Label));
+    }
+
+    [Fact]
+    public void Credentials_give_the_token_and_its_expiry_only()
+    {
+        var (token, expires) = ClaudeCredentials.Parse("""
+            {"claudeAiOauth":{"accessToken":"tok-123","refreshToken":"never-used","expiresAt":1795017154000,"scopes":["a"]}}
+            """);
+
+        Assert.Equal("tok-123", token);
+        Assert.Equal(DateTimeOffset.FromUnixTimeMilliseconds(1795017154000).UtcDateTime, expires);
+    }
+
+    [Theory]
+    [InlineData("{}")]
+    [InlineData("""{"claudeAiOauth":{"accessToken":""}}""")]
+    [InlineData("not json")]
+    [InlineData("""{"claudeAiOauth":"x"}""")]
+    public void Missing_or_broken_credentials_read_as_signed_out(string json)
+    {
+        var (token, _) = ClaudeCredentials.Parse(json);
+        Assert.Null(token);
+    }
+
+    [Fact]
+    public void Reset_text_counts_down_within_a_day_and_names_the_day_after()
+    {
+        var utc = TimeZoneInfo.Utc;
+        Assert.Equal("resets in 3 h 50 m", AiFormat.Resets(Now.AddHours(3).AddMinutes(50), Now, true, utc));
+        Assert.Equal("resets in 12 m", AiFormat.Resets(Now.AddMinutes(12), Now, true, utc));
+        Assert.Equal("resetting now", AiFormat.Resets(Now.AddSeconds(-1), Now, true, utc));
+        var later = new DateTime(2026, 11, 23, 21, 0, 0, DateTimeKind.Utc);
+        Assert.Equal("resets " + later.ToString("ddd ", System.Globalization.CultureInfo.CurrentCulture) + "21:00",
+            AiFormat.Resets(later, Now, true, utc));
+    }
+
+    [Fact]
+    public void Plan_percentages_drive_warnings_without_any_budget()
+    {
+        var settings = new AiUsageSettings { NearPercent = 80 };
+        var snapshot = new AiSnapshot(Now, new ClaudeSummary(null, UsageTotal.Empty, UsageTotal.Empty, Now), new ScanStats(0, 0, 0, 0, false));
+        var reset = Now.AddHours(2);
+        PlanUsage Plan(double session, double weekly, double fable) => new(PlanStatus.Ok, new[]
+        {
+            new PlanLimit("session", "Usage 5h", session, reset, false),
+            new PlanLimit("weekly_all", "Usage weekly", weekly, Now.AddDays(4), false),
+            new PlanLimit("weekly_scoped", "Usage Fable", fable, Now.AddDays(4), false),
+        }, Now);
+
+        Assert.Empty(AiWarnings.Evaluate(snapshot, settings, Plan(50, 10, 20)).Messages);
+
+        var crossed = AiWarnings.Evaluate(snapshot, settings, Plan(84, 81, 95));
+        Assert.Equal(new[] { "Usage 5h at 84%", "Usage weekly at 81%", "Usage Fable at 95%" }, crossed.Messages);
+        settings.Notified = crossed.State;
+
+        Assert.Empty(AiWarnings.Evaluate(snapshot, settings, Plan(90, 85, 96)).Messages);
+
+        // The window resets: one "fresh window" notice, and no repeat of the weekly ones.
+        var fresh = new AiSnapshot(reset.AddMinutes(1), snapshot.Claude, snapshot.Stats);
+        var after = AiWarnings.Evaluate(fresh, settings, new PlanUsage(PlanStatus.Ok, new[]
+        {
+            new PlanLimit("session", "Usage 5h", 2, reset.AddHours(5), false),
+            new PlanLimit("weekly_all", "Usage weekly", 85, Now.AddDays(4), false),
+        }, Now));
+        Assert.Equal(new[] { "Fresh 5-hour window" }, after.Messages);
+    }
+
+    [Fact]
+    public void Without_plan_figures_warnings_fall_back_to_budgets()
+    {
+        var settings = new AiUsageSettings { WeeklyBudgetTokens = 1000, NearPercent = 80 };
+        var snapshot = new AiSnapshot(Now, new ClaudeSummary(null, new UsageTotal(900, 1, new Dictionary<string, long>()), UsageTotal.Empty, Now),
+            new ScanStats(0, 0, 0, 0, false));
+
+        var result = AiWarnings.Evaluate(snapshot, settings, PlanUsage.Failed(PlanStatus.Expired, Now));
+        Assert.Equal(new[] { "Usage weekly at 90%" }, result.Messages);
+    }
+}

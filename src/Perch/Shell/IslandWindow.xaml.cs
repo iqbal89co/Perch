@@ -50,6 +50,7 @@ public partial class IslandWindow : Window
     private IslandPage? _current;
     private PillActivity? _shownActivity;
     private string _shownActivityKey = "";
+    private string? _shownKind;
 
     public IReadOnlyList<IslandPage> Pages => _pages;
     public bool IsExpanded => _expanded;
@@ -280,6 +281,7 @@ public partial class IslandWindow : Window
 
         _expanded = true;
         _ctx.IsExpanded = true;
+        MemoryTrim.Cancel();
         ExpandedLayer.Visibility = Visibility.Visible;
         ExpandedLayer.IsHitTestVisible = true;
         _current?.OnShown();
@@ -297,6 +299,7 @@ public partial class IslandWindow : Window
         _current?.OnHidden();
         UpdateTargets();
         StartAnimation();
+        MemoryTrim.Request();
     }
 
     private bool CanCollapse()
@@ -381,6 +384,11 @@ public partial class IslandWindow : Window
         _shownActivity = activity;
         var key = activity == null ? "clock" : activity.Key + ":" + activity.GetHashCode();
         if (key == _shownActivityKey) return;
+        // A re-post of the activity already showing (a countdown tick, a volume step) swaps its content
+        // without the fade-in; only a different activity fades. Otherwise a ticking pill blinks every second.
+        var kind = activity?.Key ?? "clock";
+        var sameKind = kind == _shownKind;
+        _shownKind = kind;
         _shownActivityKey = key;
 
         PillLeading.Content = activity?.Leading;
@@ -389,9 +397,10 @@ public partial class IslandWindow : Window
         PillLeading.Visibility = activity?.Leading == null ? Visibility.Collapsed : Visibility.Visible;
         PillTrailing.Visibility = activity?.Trailing == null ? Visibility.Collapsed : Visibility.Visible;
 
-        foreach (var part in new UIElement[] { PillLeading, PillCenter, PillTrailing })
-            part.BeginAnimation(OpacityProperty,
-                new DoubleAnimation(0.15, 1, TimeSpan.FromMilliseconds(240)) { EasingFunction = new QuadraticEase() });
+        if (!sameKind)
+            foreach (var part in new UIElement[] { PillLeading, PillCenter, PillTrailing })
+                part.BeginAnimation(OpacityProperty,
+                    new DoubleAnimation(0.15, 1, TimeSpan.FromMilliseconds(240)) { EasingFunction = new QuadraticEase() });
         UpdateTargets();
         StartAnimation();
     }
@@ -464,6 +473,7 @@ public partial class IslandWindow : Window
             if (fallback != null) Select(fallback);
         }
         _shownActivityKey = "";
+        _shownKind = null;
         RefreshPill();
         UpdateTargets();
         StartAnimation();

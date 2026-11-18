@@ -7,9 +7,10 @@ using Perch.Core;
 namespace Perch.Pages.AiUsage;
 
 /// <summary>
-/// How much of a Claude plan is used, from Claude Code's own local logs, as three rows: the current 5-hour
-/// window, the last 7 days, and the last 7 days of Fable models. Only token counts, model names and times are
-/// read. The scan runs on a background task. The page refreshes every 30 s while shown, and every 5 min while
+/// How much of a Claude plan is used, as progress rows. The percentages and reset times come from Anthropic,
+/// the same figures Claude Code's /usage shows (using Claude Code's sign-in); token counts come from Claude
+/// Code's local logs. Without a sign-in or a connection the rows fall back to the local logs against the
+/// budgets typed in settings. Only token counts, model names and times are read. The scan runs on a background task. The page refreshes every 30 s while shown, and every 5 min while
 /// hidden only when near-limit warnings are on.
 /// </summary>
 public partial class AiUsagePage : IslandPage
@@ -25,6 +26,8 @@ public partial class AiUsagePage : IslandPage
 
     private readonly DispatcherTimer _timer = new();
     private readonly AiUsageService _service = new();
+    private readonly ClaudePlanClient _planClient = new();
+    private PlanUsage? _plan;
     private readonly AiUsageSettings _settings;
     private readonly (TextBox Box, Func<long?> Get, Action<long?> Set)[] _budgets;
     private AiSnapshot? _snapshot;
@@ -128,8 +131,11 @@ public partial class AiUsagePage : IslandPage
         RenderHeader();
         try
         {
-            var snapshot = await Task.Run(() => _service.Build(DateTime.UtcNow, rescan));
-            _snapshot = snapshot;
+            var now = DateTime.UtcNow;
+            var local = Task.Run(() => _service.Build(now, rescan));
+            var plan = _planClient.GetAsync(now, force: rescan);
+            _snapshot = await local;
+            _plan = await plan;
             Render();
             EvaluateWarnings();
         }
@@ -142,13 +148,14 @@ public partial class AiUsagePage : IslandPage
             _busy = false;
             _lastScanUtc = DateTime.UtcNow;
             RenderHeader();
+            if (!Ctx.IsExpanded) MemoryTrim.Request(); // a scan in the background leaves its buffers behind
         }
     }
 
     private void EvaluateWarnings()
     {
         if (!_settings.WarnNearLimit || _snapshot is not { } snapshot) return;
-        var result = AiWarnings.Evaluate(snapshot, _settings);
+        var result = AiWarnings.Evaluate(snapshot, _settings, _plan);
         if (!result.State.Equals(_settings.Notified))
         {
             _settings.Notified = result.State;
@@ -217,9 +224,18 @@ public partial class AiUsagePage : IslandPage
             HeaderText.Text = _snapshot == null ? "Reading logs…" : "Updating…";
             return;
         }
-        HeaderText.Text = _lastScanUtc == DateTime.MinValue
-            ? ""
-            : "Claude Code · updated " + AiFormat.Ago(DateTime.UtcNow - _lastScanUtc);
+        if (_lastScanUtc == DateTime.MinValue)
+        {
+            HeaderText.Text = "";
+            return;
+        }
+        HeaderText.Text = _plan?.Status switch
+        {
+            PlanStatus.Ok => "Claude plan · updated " + AiFormat.Ago(DateTime.UtcNow - _plan.FetchedUtc),
+            PlanStatus.Expired => "Estimate from local logs · open Claude Code to renew its sign-in",
+            PlanStatus.SignedOut => "Estimate from local logs · sign in to Claude Code for exact %",
+            _ => "Estimate from local logs · couldn't reach Anthropic",
+        };
     }
 
     private void Render()
@@ -228,71 +244,127 @@ public partial class AiUsagePage : IslandPage
         var snapshot = _snapshot;
         var claude = snapshot?.Claude;
 
-        if (claude != null)
+        if (_plan is { Status: PlanStatus.Ok } plan)
+            RenderPlan(plan, claude);
+        else if (claude != null)
         {
             var block = claude.Current;
-            AddTile(0, "5 hours", block?.ActiveTokens ?? 0, _settings.ClaudeBlockBudgetTokens,
+            AddRow("Usage 5h", block?.ActiveTokens ?? 0, _settings.ClaudeBlockBudgetTokens,
                 block != null ? $"resets in {AiFormat.Remaining(block.EndUtc - DateTime.UtcNow)}" : "idle",
                 block != null ? Breakdown(block.ModelTokens) : null);
-            AddTile(1, "Weekly", claude.Week.Tokens, _settings.WeeklyBudgetTokens, "last 7 days",
+            AddRow("Usage weekly", claude.Week.Tokens, _settings.WeeklyBudgetTokens, "last 7 days",
                 Breakdown(claude.Week.ModelTokens));
-            AddTile(2, "Fable", claude.FableWeek.Tokens, _settings.FableBudgetTokens, "last 7 days",
+            AddRow("Usage Fable", claude.FableWeek.Tokens, _settings.FableBudgetTokens, "last 7 days",
                 Breakdown(claude.FableWeek.ModelTokens));
         }
 
         UsageList.Visibility = _settingsOpen ? Visibility.Collapsed : Visibility.Visible;
-        EmptyPanel.Visibility = !_settingsOpen && snapshot != null && claude == null ? Visibility.Visible : Visibility.Collapsed;
+        EmptyPanel.Visibility = !_settingsOpen && snapshot != null && claude == null && _plan?.Status != PlanStatus.Ok
+            ? Visibility.Visible
+            : Visibility.Collapsed;
         SettingsPanel.Visibility = _settingsOpen ? Visibility.Visible : Visibility.Collapsed;
     }
 
     /// <summary>
-    /// One tile: a small label, one big number (the percentage of the budget, or the token count when there is
-    /// no budget), a bar when there is a budget, and a short note. Hover shows tokens per model.
+    /// Rows from Anthropic's figures, in the order /usage lists them. Each shows the exact percent and reset time;
+    /// the line under the percent is the matching token count from the local logs. Fable gets a row from the
+    /// local logs when the plan has no separate Fable limit.
     /// </summary>
-    private void AddTile(int index, string name, long tokens, long? budget, string note, string? tooltip)
+    private void RenderPlan(PlanUsage plan, ClaudeSummary? claude)
+    {
+        var now = DateTime.UtcNow;
+        foreach (var limit in plan.Limits)
+        {
+            UsageTotal? local = limit.IsSession ? null : limit.IsWeeklyAll ? claude?.Week : limit.IsFable ? claude?.FableWeek : null;
+            long? tokens = limit.IsSession ? claude?.Current?.ActiveTokens : local?.Tokens;
+            var tooltip = limit.IsSession
+                ? (claude?.Current is { } block ? Breakdown(block.ModelTokens) : null)
+                : local != null ? Breakdown(local.ModelTokens) : null;
+            AddRow(limit.Label, limit.Percent, limit.Elevated,
+                limit.ResetsAtUtc is { } reset ? AiFormat.Resets(reset, now, Ctx.Settings.Use24h) : limit.IsSession ? "idle" : "",
+                tokens is { } t ? $"{AiFormat.Tokens(t)} tokens" : "used", tooltip);
+        }
+
+        if (!plan.Limits.Any(l => l.IsFable) && claude != null)
+        {
+            var fable = claude.FableWeek;
+            var percent = AiWarnings.Percent(fable.Tokens, _settings.FableBudgetTokens);
+            AddRow("Usage Fable", percent, false, "part of weekly",
+                percent == null ? "tokens this week" : $"{AiFormat.Tokens(fable.Tokens)} of {AiFormat.Tokens(_settings.FableBudgetTokens!.Value)}",
+                Breakdown(fable.ModelTokens),
+                valueText: percent == null ? AiFormat.Tokens(fable.Tokens) : null);
+        }
+    }
+
+    /// <summary>A row from the local logs against a typed budget (the fallback when there are no plan figures).</summary>
+    private void AddRow(string name, long tokens, long? budget, string note, string? tooltip)
     {
         var percent = AiWarnings.Percent(tokens, budget);
-        var danger = percent >= NearPercent;
-        var stack = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+        AddRow(name, percent, false, note,
+            budget is { } b && b > 0 ? $"{AiFormat.Tokens(tokens)} of {AiFormat.Tokens(b)}" : "tokens, no budget",
+            tooltip, valueText: percent == null ? AiFormat.Tokens(tokens) : null);
+    }
 
+    /// <summary>
+    /// One row: the name and a short note on the left, a full-width progress bar in the middle, and the
+    /// percentage with "used of budget" on the right. Without a budget the bar stays empty and the right side
+    /// shows the token count. Hover shows tokens per model.
+    /// </summary>
+    private void AddRow(string name, double? percent, bool elevated, string note, string detailText, string? tooltip,
+        string? valueText = null)
+    {
+        var danger = elevated || percent >= NearPercent;
+
+        var grid = new Grid();
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(118) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Auto), MinWidth = 92 });
+
+        var left = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
         var label = new TextBlock
         {
-            Text = name.ToUpperInvariant(),
-            Style = (Style)FindResource("PerchCaption"),
-            FontSize = 11,
+            Text = name,
+            Style = (Style)FindResource("PerchBody"),
+            FontSize = 13,
             FontWeight = FontWeights.SemiBold,
+            TextTrimming = TextTrimming.CharacterEllipsis,
         };
-        label.SetResourceReference(TextBlock.ForegroundProperty, "IslandAccent");
-        stack.Children.Add(label);
+        left.Children.Add(label);
+        left.Children.Add(Caption(note));
+        grid.Children.Add(left);
 
+        var bar = Bar(percent is { } p ? p / 100 : 0, danger, new Thickness(6, 0, 14, 0));
+        bar.VerticalAlignment = VerticalAlignment.Center;
+        if (percent == null) bar.ToolTip = "Set a budget in AI settings to fill this bar";
+        if (string.IsNullOrEmpty(note)) left.Children.RemoveAt(1);
+        Grid.SetColumn(bar, 1);
+        grid.Children.Add(bar);
+
+        var right = new StackPanel { VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Right };
         var value = new TextBlock
         {
-            Text = percent is { } p ? $"{Math.Round(p):0}%" : AiFormat.Tokens(tokens),
+            Text = valueText ?? (percent is { } q ? $"{Math.Round(q):0}%" : "–"),
             Style = (Style)FindResource("PerchTitle"),
-            FontSize = 34,
+            FontSize = 18,
             FontWeight = FontWeights.Bold,
-            Margin = new Thickness(0, 2, 0, 0),
+            HorizontalAlignment = HorizontalAlignment.Right,
         };
         if (danger) value.SetResourceReference(TextBlock.ForegroundProperty, "IslandDanger");
-        stack.Children.Add(value);
+        right.Children.Add(value);
+        var detail = Caption(detailText);
+        detail.HorizontalAlignment = HorizontalAlignment.Right;
+        right.Children.Add(detail);
+        Grid.SetColumn(right, 2);
+        grid.Children.Add(right);
 
-        stack.Children.Add(Caption(budget is { } b && b > 0 ? $"{AiFormat.Tokens(tokens)} of {AiFormat.Tokens(b)} tokens" : "tokens"));
-        if (percent is { } fraction) stack.Children.Add(Bar(fraction / 100, danger, new Thickness(0, 8, 0, 0)));
-
-        var foot = Caption(note);
-        foot.Margin = new Thickness(0, 10, 0, 0);
-        stack.Children.Add(foot);
-
-        var card = new Border
+        UsageList.Children.Add(new Border
         {
             Style = (Style)FindResource("PerchCard"),
-            Padding = new Thickness(16, 12, 16, 12),
-            Margin = new Thickness(index == 0 ? 0 : 4, 0, index == 2 ? 0 : 4, 0),
-            Child = stack,
+            Padding = new Thickness(14, 8, 14, 8),
+            Margin = new Thickness(0, UsageList.Children.Count == 0 ? 0 : 8, 0, 0),
+            Child = grid,
             ToolTip = tooltip,
-        };
-        Grid.SetColumn(card, index);
-        UsageList.Children.Add(card);
+        });
     }
 
     /// <summary>Tooltip: tokens per model, largest first. Null when there is nothing to split.</summary>
@@ -303,20 +375,27 @@ public partial class AiUsagePage : IslandPage
                 .OrderByDescending(kv => kv.Value)
                 .Select(kv => $"{kv.Key}: {AiFormat.Tokens(kv.Value)}"));
 
-    /// <summary>A thin rounded bar: the track is IslandCardHover, the fill is accent (or danger when near the limit).</summary>
+    /// <summary>
+    /// A rounded progress bar: the track is IslandCardHover, the fill is accent (or danger when near the limit).
+    /// The fill is sized from the track's width and never drawn thinner than the bar is tall, so 1% still reads.
+    /// </summary>
     private static FrameworkElement Bar(double fraction, bool danger, Thickness margin)
     {
+        const double height = 10;
         var f = Math.Clamp(fraction, 0, 1);
-        var grid = new Grid { Height = 5, Margin = margin };
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(Math.Max(f, 0.0001), GridUnitType.Star) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(Math.Max(1 - f, 0.0001), GridUnitType.Star) });
+        var grid = new Grid { Height = height, Margin = margin };
 
-        var track = new Border { CornerRadius = new CornerRadius(2.5) };
+        var track = new Border { CornerRadius = new CornerRadius(height / 2) };
         track.SetResourceReference(Border.BackgroundProperty, "IslandCardHover");
-        Grid.SetColumnSpan(track, 2);
 
-        var fill = new Border { CornerRadius = new CornerRadius(2.5) };
+        var fill = new Border
+        {
+            CornerRadius = new CornerRadius(height / 2),
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Visibility = f <= 0 ? Visibility.Collapsed : Visibility.Visible,
+        };
         fill.SetResourceReference(Border.BackgroundProperty, danger ? "IslandDanger" : "IslandAccent");
+        grid.SizeChanged += (_, e) => fill.Width = Math.Max(height, e.NewSize.Width * f);
 
         grid.Children.Add(track);
         grid.Children.Add(fill);

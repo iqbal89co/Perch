@@ -43,8 +43,7 @@ public partial class App : Application
             return;
         }
 
-        base.OnStartup(e);
-        DispatcherUnhandledException += (_, a) =>
+        base.OnStartup(e);        DispatcherUnhandledException += (_, a) =>
         {
             Log.Error("unhandled UI exception", a.Exception);
             a.Handled = true;
@@ -75,6 +74,8 @@ public partial class App : Application
         _island = new IslandWindow(_ctx);
         Island = _island;
         _island.Show();
+        MemoryTrim.Initialize(Dispatcher, () => _island is { IsExpanded: false });
+        MemoryTrim.Request(); // startup leaves a lot of one-time garbage and pages behind
 
         StartServices();
         _ = _ctx.Media.StartAsync();
@@ -109,6 +110,25 @@ public partial class App : Application
                     Log.Error("screenshot failed", ex);
                 }
                 Shutdown();
+            };
+            timer.Start();
+        }
+
+        // Test runs only: append the managed heap figures to a file every 2 s (used by the memory check).
+        if (isTestRun && args.Get("--mem-report") is { } memFile)
+        {
+            var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
+            timer.Tick += (_, _) =>
+            {
+                var info = GC.GetGCMemoryInfo();
+                using var me = System.Diagnostics.Process.GetCurrentProcess();
+                File.AppendAllText(memFile, string.Join('\t',
+                    DateTime.Now.ToString("HH:mm:ss"),
+                    $"heap={GC.GetTotalMemory(false) / 1048576.0:F1}",
+                    $"committed={info.TotalCommittedBytes / 1048576.0:F1}",
+                    $"private={me.PrivateMemorySize64 / 1048576.0:F1}",
+                    $"ws={me.WorkingSet64 / 1048576.0:F1}",
+                    $"gen2={GC.CollectionCount(2)}") + Environment.NewLine);
             };
             timer.Start();
         }

@@ -23,6 +23,8 @@ public partial class FocusPage : IslandPage
     private readonly PomodoroEngine _engine = new(new PomodoroSettings());
     private readonly FocusLog _log;
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromSeconds(1) };
+    private TextBlock? _pillGlyph, _pillPhase, _pillClock;
+    private (int Every, int Count) _dotsShown = (-1, -1);
 
     public override string Id => "focus";
     public override string Title => "Focus";
@@ -155,6 +157,8 @@ public partial class FocusPage : IslandPage
         var count = _engine.CompletedFocusCount;
         var done = count % every;
         if (done == 0 && count > 0) done = every;
+        if (_dotsShown == (every, count) && DotsPanel.Children.Count == every) return;
+        _dotsShown = (every, count);
 
         DotsPanel.Children.Clear();
         for (var i = 0; i < every; i++)
@@ -180,6 +184,10 @@ public partial class FocusPage : IslandPage
         return new PathGeometry(new[] { figure });
     }
 
+    /// <summary>
+    /// Keeps the "focus" pill on the resting island. It is posted once per countdown and then updated in place
+    /// each second (no new visuals, no re-post), so the island does not redraw the whole pill every tick.
+    /// </summary>
     private void PostPill(string phaseName, string clock)
     {
         if (IslandContext.Current is not { } ctx) return;
@@ -189,7 +197,15 @@ public partial class FocusPage : IslandPage
             return;
         }
 
-        var leading = new TextBlock
+        if (_pillClock != null && ctx.Activities.Contains(PillKey))
+        {
+            _pillGlyph!.Text = _engine.IsRunning ? TimerGlyph : PauseGlyph;
+            _pillPhase!.Text = phaseName;
+            _pillClock.Text = clock;
+            return;
+        }
+
+        _pillGlyph = new TextBlock
         {
             Text = _engine.IsRunning ? TimerGlyph : PauseGlyph,
             FontFamily = (FontFamily)Application.Current.FindResource("IconFont"),
@@ -197,9 +213,9 @@ public partial class FocusPage : IslandPage
             Margin = new Thickness(0, 0, 6, 0),
             VerticalAlignment = VerticalAlignment.Center,
         };
-        leading.SetResourceReference(TextBlock.ForegroundProperty, "IslandAccent");
+        _pillGlyph.SetResourceReference(TextBlock.ForegroundProperty, "IslandAccent");
 
-        var center = new TextBlock
+        _pillPhase = new TextBlock
         {
             Text = phaseName,
             FontSize = 12,
@@ -207,9 +223,9 @@ public partial class FocusPage : IslandPage
             TextTrimming = TextTrimming.CharacterEllipsis,
             VerticalAlignment = VerticalAlignment.Center,
         };
-        center.SetResourceReference(TextBlock.ForegroundProperty, "IslandForeground");
+        _pillPhase.SetResourceReference(TextBlock.ForegroundProperty, "IslandForeground");
 
-        var trailing = new TextBlock
+        _pillClock = new TextBlock
         {
             Text = clock,
             FontSize = 12,
@@ -217,17 +233,17 @@ public partial class FocusPage : IslandPage
             Margin = new Thickness(10, 0, 0, 0),
             VerticalAlignment = VerticalAlignment.Center,
         };
-        System.Windows.Documents.Typography.SetNumeralAlignment(trailing, FontNumeralAlignment.Tabular);
-        trailing.SetResourceReference(TextBlock.ForegroundProperty, "IslandForeground");
+        System.Windows.Documents.Typography.SetNumeralAlignment(_pillClock, FontNumeralAlignment.Tabular);
+        _pillClock.SetResourceReference(TextBlock.ForegroundProperty, "IslandForeground");
 
         ctx.Activities.Post(new PillActivity
         {
             Key = PillKey,
             Priority = 60,
             Width = 190,
-            Leading = leading,
-            Center = center,
-            Trailing = trailing,
+            Leading = _pillGlyph,
+            Center = _pillPhase,
+            Trailing = _pillClock,
         });
     }
 }

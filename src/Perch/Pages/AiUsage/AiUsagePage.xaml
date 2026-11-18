@@ -16,14 +16,8 @@
         </DockPanel>
 
         <Grid Grid.Row="1" Margin="0,4,0,0">
-            <!-- Three tiles side by side: the 5-hour window, the last 7 days, the last 7 days of Fable -->
-            <Grid x:Name="UsageList">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
-            </Grid>
+            <!-- Three progress rows: the 5-hour window, the last 7 days, the last 7 days of Fable -->
+            <StackPanel x:Name="UsageList" VerticalAlignment="Top" />
 
             <!-- No Claude Code logs on this PC -->
             <StackPanel x:Name="EmptyPanel" VerticalAlignment="Center" HorizontalAlignment="Center" Visibility="Collapsed">
@@ -45,8 +39,8 @@
                                    Text="Try 2.5M or 800k" Visibility="Collapsed" />
                         <TextBlock Style="{StaticResource PerchBody}" Text="Budgets" FontWeight="SemiBold" />
                     </DockPanel>
-                    <TextBlock Style="{StaticResource PerchCaption}" Margin="0,1,0,6"
-                               Text="Input and output tokens, for example 2.5M or 800k. Leave empty for no bar." />
+                    <TextBlock Style="{StaticResource PerchCaption}" Margin="0,1,0,6" TextWrapping="Wrap"
+                               Text="Used only when Anthropic's figures aren't available (and for Fable if your plan has no Fable limit). Input and output tokens, for example 2.5M or 800k." />
 
                     <!-- One column per row of the main view -->
                     <Grid>
@@ -93,7 +87,7 @@
                         <Button x:Name="RescanButton" DockPanel.Dock="Right" Style="{StaticResource PerchGhostButton}"
                                 Content="Rescan now" Padding="12,5" />
                         <TextBlock Style="{StaticResource PerchCaption}" TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,10,0"
-                                   Text="Perch reads only token counts and times from Claude Code's local logs. Nothing leaves this PC." />
+                                   Text="Percentages come from Anthropic, like /usage, using Claude Code's sign-in (sent only to api.anthropic.com, never stored). Token counts come from Claude Code's local logs." />
                     </DockPanel>
                 </StackPanel>
             </Border>

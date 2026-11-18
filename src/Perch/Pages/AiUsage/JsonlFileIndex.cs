@@ -34,14 +34,28 @@ public sealed class JsonlFileIndex<T> where T : class
             FileShare.ReadWrite | FileShare.Delete, 64 * 1024, FileOptions.SequentialScan);
         stream.Seek(Offset, SeekOrigin.Begin);
 
-        var chunk = new byte[ChunkSize];
+        // The chunk is rented: a fresh 256 KB array per file per refresh landed on the large object heap and
+        // forced a full collection every few files.
+        var chunk = System.Buffers.ArrayPool<byte>.Shared.Rent(ChunkSize);
+        try
+        {
+            return ReadFrom(stream, chunk, parse);
+        }
+        finally
+        {
+            System.Buffers.ArrayPool<byte>.Shared.Return(chunk);
+        }
+    }
+
+    private long ReadFrom(Stream stream, byte[] chunk, LineParser<T> parse)
+    {
         var pending = new byte[4096];
         var pendingLength = 0;
         long consumed = Offset;
         long read = 0;
 
         int n;
-        while ((n = stream.Read(chunk, 0, chunk.Length)) > 0)
+        while ((n = stream.Read(chunk, 0, ChunkSize)) > 0)
         {
             read += n;
             var data = chunk.AsSpan(0, n);
